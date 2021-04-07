@@ -3,11 +3,12 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	_ "github.com/go-sql-driver/mysql"
 	"net/http"
 )
 
 func open_db() (*sql.DB, error) {
-	db, err := sql.Open("mysql", "mysql")
+	db, err := sql.Open("mysql", "root:password@/testdb")
 	return db,err
 }
 
@@ -23,25 +24,22 @@ func headers(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-
-
 func main() {
 	db,err := open_db()
-	if err != nil{
-		//return nil error
-		panic("cannot open database")
-	}
-	defer db.Close()
-	insert, err := db.Query("INSERT INTO test VALUES ( 2, 'TEST' )")
 
-	// if there is an error inserting, handle it
 	if err != nil {
 		panic(err.Error())
 	}
-	// be careful deferring Queries if you are using transactions
+	defer db.Close()
+
+	insert,err := db.Query("INSERT INTO users VALUE ('Elliot')")
+	if err != nil {
+		panic(err.Error())
+	}
 	defer insert.Close()
 
-	http.HandleFunc("/hello",hello)
-	http.HandleFunc("/headers",headers)
-	http.ListenAndServe(":8090",nil)
+	fmt.Println("successfully connected")
+	//http.HandleFunc("/hello",hello)
+	//http.HandleFunc("/headers",headers)
+	//http.ListenAndServe(":8090",nil)
 }
