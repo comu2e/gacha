@@ -11,3 +11,5 @@ type User struct {
 	UserStatus string
 	Character []Character
 }
+
+
