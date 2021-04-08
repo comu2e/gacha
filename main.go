@@ -30,7 +30,7 @@ func create_user(w http.ResponseWriter,req *http.Request) {
 		fmt.Println(id)
 		id_d := id + 1
 		db.Query("INSERT into characters value(?,?,?,?,?,?,?,?)",
-			Username,FirstName,LastName,Email,Password,Phone,UserStatus,id_id)
+			Username,FirstName,LastName,Email,Password,Phone,UserStatus,id_d)
 	}
 }
 
