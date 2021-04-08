@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
-	"go_cyber/models"
 	"net/http"
 )
 
@@ -12,7 +11,28 @@ func open_db() (*sql.DB, error) {
 	db, err := sql.Open("mysql", "root:password@/testdb")
 	return db,err
 }
+func create_user(w http.ResponseWriter,req *http.Request) {
+	db,err := open_db()
+	if err != nil {
+		panic(err.Error())
+	}
+	defer db.Close()
 
+	//transactionの開始
+	tx,_ := db.Begin()
+	//最後にロールバック
+	defer tx.Rollback()
+	//auto incrementで追加
+	rows,_ := tx.Query("SELECT max(id) FROM users")
+	for rows.Next() {
+		var id int
+		rows.Scan(&id)
+		fmt.Println(id)
+		id_d := id + 1
+		db.Query("INSERT into characters value(?,?,?,?,?,?,?,?)",
+			Username,FirstName,LastName,Email,Password,Phone,UserStatus,id_id)
+	}
+}
 
 func hello(w http.ResponseWriter, req *http.Request) {
 	fmt.Fprintf(w, "CCCC\n")
@@ -34,30 +54,8 @@ func main() {
 	}
 	defer db.Close()
 
-	rows,err := db.Query("select * from testdb.users")
-	if err != nil{
-		panic(err.Error())
-	}
-	defer rows.Close()
-
-	for rows.Next(){
-		var user models.User
-		err := rows.Scan(&user.Username)
-		if err != nil{
-			panic(err.Error())
-		}
-		fmt.Println(user.ID,user.Username)
-	}
-
-	insert,err := db.Query("INSERT INTO users VALUE ('EIji')")
-
-	if err != nil {
-		panic(err.Error())
-	}
-	defer insert.Close()
-
 	fmt.Println("successfully connected")
-	//http.HandleFunc("/hello",hello)
-	//http.HandleFunc("/headers",headers)
-	//http.ListenAndServe(":8090",nil)
+	http.HandleFunc("/create_user",create_user)
+	http.HandleFunc("/headers",headers)
+	http.ListenAndServe(":8090",nil)
 }
