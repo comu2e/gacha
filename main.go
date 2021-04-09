@@ -28,17 +28,29 @@ func create_user(w http.ResponseWriter,req *http.Request) {
 		var id int
 		rows.Scan(&id)
 		fmt.Println(id)
-		id_d := id + 1
-		db.Query("INSERT into characters value(?,?,?,?,?,?,?,?)",
-			Username,FirstName,LastName,Email,Password,Phone,UserStatus,id_id)
+
+		queryMap := req.URL.Query()
+		if queryMap ==nil {
+			return
+		}
+		Username := queryMap["Username"]
+		FirstName := queryMap["FirstName"]
+		LastName := queryMap["LastName"]
+		Email := queryMap["Email"]
+		Password := queryMap["Password"]
+		Phone := queryMap["Phone"]
+		UserStatus := queryMap["UserStatus"]
+
+		next_id := id + 1
+
+		db.Query("INSERT into users value(?,?,?,?,?,?,?,?)",
+			Username[0],FirstName[0],LastName[0],Email[0],Password[0],Phone[0],UserStatus[0],next_id)
+		fmt.Println(queryMap)
 	}
 }
 
-func hello(w http.ResponseWriter, req *http.Request) {
-	fmt.Fprintf(w, "CCCC\n")
-}
-func headers(w http.ResponseWriter, req *http.Request) {
 
+func headers(w http.ResponseWriter, req *http.Request) {
 	for name,headers := range req.Header{
 		for _,h := range headers{
 			fmt.Fprintf(w,"%v : %v\n",name,h)
@@ -47,6 +59,7 @@ func headers(w http.ResponseWriter, req *http.Request) {
 }
 
 func main() {
+
 	db,err := open_db()
 
 	if err != nil {
@@ -55,7 +68,7 @@ func main() {
 	defer db.Close()
 
 	fmt.Println("successfully connected")
-	http.HandleFunc("/create_user",create_user)
+	http.HandleFunc("/create_user/",create_user)
 	http.HandleFunc("/headers",headers)
 	http.ListenAndServe(":8090",nil)
 }
