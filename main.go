@@ -11,7 +11,7 @@ func open_db() (*sql.DB, error) {
 	db, err := sql.Open("mysql", "root:password@/testdb")
 	return db,err
 }
-func create_user(w http.ResponseWriter,req *http.Request) {
+func createUser(w http.ResponseWriter,req *http.Request) {
 	db,err := open_db()
 	if err != nil {
 		panic(err.Error())
@@ -48,8 +48,59 @@ func create_user(w http.ResponseWriter,req *http.Request) {
 		fmt.Println(queryMap)
 	}
 }
+func updateUser(w http.ResponseWriter,req *http.Request) {
+	db,err := open_db()
+	if err != nil {
+		panic(err.Error())
+	}
+	defer db.Close()
 
+	//transactionの開始
+	tx,err := db.Begin()
+	////最後にロールバック
+	//if err != nil {
+	//
+	//}
+	defer tx.Rollback()
+	//auto incrementで追加
+	queryMap := req.URL.Query()
+		if queryMap ==nil {
+			return
+		}
+	id := queryMap["id"][0]
+	for k, v := range queryMap {
 
+		if k != "id" {
+			//query文を作成
+			query := "UPDATE users SET " + k + " = \"" + v[0] + "\" WHERE id = " + id
+			fmt.Println(query)
+			db.Query(query)
+
+			fmt.Println("++")
+		}else {
+			fmt.Println(k)
+			fmt.Println("++++")
+		}
+	}
+}
+
+func deleteUser(w http.ResponseWriter, req *http.Request) {
+	db,err := open_db()
+	if err != nil{
+		return
+	}
+	defer db.Close()
+	tx,_ := db.Begin()
+	defer tx.Rollback()
+
+	queryMap := req.URL.Query()
+	if queryMap ==nil {
+		return
+	}
+	deleteUserId := queryMap["user_id"][0]
+	db.Query("DELETE FROM users where id = ?", deleteUserId)
+	fmt.Println(deleteUserId)
+}
 func headers(w http.ResponseWriter, req *http.Request) {
 	for name,headers := range req.Header{
 		for _,h := range headers{
@@ -68,7 +119,9 @@ func main() {
 	defer db.Close()
 
 	fmt.Println("successfully connected")
-	http.HandleFunc("/create_user/",create_user)
+	http.HandleFunc("/create_user/", createUser)
+	http.HandleFunc("/update_user/", updateUser)
+	http.HandleFunc("/delete_user/", deleteUser)
 	http.HandleFunc("/headers",headers)
 	http.ListenAndServe(":8090",nil)
 }
