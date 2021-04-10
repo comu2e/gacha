@@ -4,7 +4,9 @@ import (
 	"database/sql"
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
+	"go_cyber/models"
 	"net/http"
+	"log"
 	"strings"
 )
 
@@ -12,6 +14,36 @@ func openDb() (*sql.DB, error) {
 	db, err := sql.Open("mysql", "root:password@/testdb")
 	return db,err
 }
+
+func fetchUser(_ http.ResponseWriter, req *http.Request) {
+	db,err := openDb()
+	if err != nil {
+		return
+	}
+	defer db.Close()
+	queryMap := req.URL.Query()
+	if queryMap ==nil {
+		return
+	}
+	//id := queryMap["id"][0]
+
+	rows,err := db.Query("SELECT * FROM users where id = ?",2)
+
+	if err != nil{
+		log.Fatal(err)
+	}
+	//TODO userの情報を取得する
+	//TODO jsonに出力する。
+	for rows.Next() {
+		user := &models.User{}
+		rows.Scan(&user.Username)
+		fmt.Println(user)
+	}
+
+
+
+}
+
 
 func createUser(_ http.ResponseWriter,req *http.Request) {
 	db,err := openDb()
@@ -27,7 +59,7 @@ func createUser(_ http.ResponseWriter,req *http.Request) {
 	rows,err := db.Query("SELECT max(id) FROM users")
 
 	if err != nil {
-		 fmt.Println(err)
+		log.Fatal(err)
 	}
 	for rows.Next() {
 		var id int
@@ -52,6 +84,8 @@ func createUser(_ http.ResponseWriter,req *http.Request) {
 		if errInsert != nil{
 			//失敗したらロールバック
 			_ = tx.Rollback()
+			log.Fatal(errInsert)
+
 		}
 		//成功したらCommit
 		_ = tx.Commit()
@@ -129,6 +163,7 @@ func main() {
 
 	fmt.Println("successfully connected")
 	//TODO:GET,PUT,DELETEはどのように指定すればいいのか確認する
+	http.HandleFunc("/user/get/", fetchUser)
 	http.HandleFunc("/user/create/", createUser)
 	http.HandleFunc("/user/update/", updateUser)
 	http.HandleFunc("/user/delete/", deleteUser)
