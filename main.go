@@ -1,12 +1,13 @@
 package main
 
 import (
+	"Gacha/model"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
-	"go_cyber/models"
-	"net/http"
 	"log"
+	"net/http"
 	"strings"
 )
 
@@ -15,7 +16,7 @@ func openDb() (*sql.DB, error) {
 	return db,err
 }
 
-func fetchUser(_ http.ResponseWriter, req *http.Request) {
+func fetchUser(w http.ResponseWriter, req *http.Request) {
 	db,err := openDb()
 	if err != nil {
 		return
@@ -35,12 +36,24 @@ func fetchUser(_ http.ResponseWriter, req *http.Request) {
 	//TODO userの情報を取得する
 	//TODO jsonに出力する。
 	for rows.Next() {
-		user := &models.User{}
+		user := &model.User{}
 		rows.Scan(&user.Username)
-		fmt.Println(user)
 	}
 
+	output := map[string]interface{}{
+		//ここにuserの情報を入れていく。
+		"data":model.Character{1,"s"},
+		"message":"data",
+	}
 
+	defer func() {
+		outjson ,er := json.Marshal(output)
+		if er != nil {
+			log.Fatal(er)
+		}
+		w.Header().Set("content-Type","application/json")
+		fmt.Fprint(w,string(outjson))
+	}()
 
 }
 
