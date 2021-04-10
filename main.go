@@ -64,10 +64,8 @@ func updateUser(_ http.ResponseWriter,req *http.Request) {
 		panic(err.Error())
 	}
 	defer db.Close()
-
 	//transactionの開始
 	var tx,_ = db.Begin()
-
 	//auto incrementで追加
 	queryMap := req.URL.Query()
 		if queryMap ==nil {
@@ -77,7 +75,6 @@ func updateUser(_ http.ResponseWriter,req *http.Request) {
 	//TODO:UPDATE SQL 最大で7件発行されるので、１件にまとめられないか 予めquery文作成しておくことで対応。
 	setQuery := ""
 	for k,v := range queryMap{
-
 		if k != "id"{
 			setQuery += k + " = \"" + v[0] +"\"" +  ","
 		}
