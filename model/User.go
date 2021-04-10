@@ -9,7 +9,7 @@ type User struct {
 	Password   string
 	Phone      string
 	UserStatus string
-	Character []Character
+	//Character []Character
 }
 
 

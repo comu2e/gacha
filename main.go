@@ -26,9 +26,9 @@ func fetchUser(w http.ResponseWriter, req *http.Request) {
 	if queryMap ==nil {
 		return
 	}
-	//id := queryMap["id"][0]
+	id := queryMap["id"][0]
 
-	rows,err := db.Query("SELECT * FROM users where id = ?",2)
+	rows,err := db.Query("SELECT * FROM users where id = ?",id)
 
 	if err != nil{
 		log.Fatal(err)
@@ -43,6 +43,11 @@ func fetchUser(w http.ResponseWriter, req *http.Request) {
 	output := map[string]interface{}{
 		//ここにuserの情報を入れていく。
 		"data":model.Character{1,"s"},
+		//イメージこんな感じ
+		//Characterもあるので注意　relations
+		"userdata":model.User{1,"s",
+			"s","s","s",
+			"s","s","s"},
 		"message":"data",
 	}
 
