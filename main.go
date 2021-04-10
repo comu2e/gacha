@@ -45,9 +45,9 @@ func createUser(_ http.ResponseWriter,req *http.Request) {
 		Phone := queryMap["Phone"]
 		UserStatus := queryMap["UserStatus"]
 
-		next_id := id + 1
+		nextId := id + 1
 		_, errInsert := tx.Query("INSERT into users value(?,?,?,?,?,?,?,?)",
-			Username[0],FirstName[0],LastName[0],Email[0],Password[0],Phone[0],UserStatus[0],next_id)
+			Username[0],FirstName[0],LastName[0],Email[0],Password[0],Phone[0],UserStatus[0], nextId)
 		fmt.Println(queryMap)
 		if errInsert != nil{
 			//失敗したらロールバック
@@ -75,16 +75,16 @@ func updateUser(_ http.ResponseWriter,req *http.Request) {
 		}
 	id := queryMap["id"][0]
 	//TODO:UPDATE SQL 最大で7件発行されるので、１件にまとめられないか 予めquery文作成しておくことで対応。
-	set_query := ""
+	setQuery := ""
 	for k,v := range queryMap{
 
 		if k != "id"{
-			set_query += k + " = \"" + v[0] +"\"" +  ","
+			setQuery += k + " = \"" + v[0] +"\"" +  ","
 		}
 	}
-	set_query = strings.TrimRight(set_query, ",")
-	fmt.Println(set_query)
-	query := "UPDATE users SET " + set_query + " WHERE id = " + id
+	setQuery = strings.TrimRight(setQuery, ",")
+	fmt.Println(setQuery)
+	query := "UPDATE users SET " + setQuery + " WHERE id = " + id
 	fmt.Println(query)
 	_, errUpdate := tx.Query(query)
 	if errUpdate != nil {
