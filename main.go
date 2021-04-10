@@ -127,9 +127,9 @@ func main() {
 
 	fmt.Println("successfully connected")
 	//TODO:GET,PUT,DELETEはどのように指定すればいいのか確認する
-	http.HandleFunc("/create_user/", createUser)
-	http.HandleFunc("/update_user/", updateUser)
-	http.HandleFunc("/delete_user/", deleteUser)
+	http.HandleFunc("/user/create/", createUser)
+	http.HandleFunc("/user/update/", updateUser)
+	http.HandleFunc("/user/delete/", deleteUser)
 	http.HandleFunc("/headers",headers)
 	http.ListenAndServe(":8090",nil)
 }
