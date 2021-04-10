@@ -5,6 +5,7 @@ import (
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
 	"net/http"
+	"strings"
 )
 
 func open_db() (*sql.DB, error) {
@@ -74,18 +75,23 @@ func updateUser(w http.ResponseWriter,req *http.Request) {
 		}
 	id := queryMap["id"][0]
 	//TODO:UPDATE SQL 最大で7件発行されるので、１件にまとめられないか
-	for k, v := range queryMap {
+	//予めquery文作成しておくことで対応。
+	set_query := ""
+	for k,v := range queryMap{
 
-		if k != "id" {
-			//query文を作成
-			query := "UPDATE users SET " + k + " = \"" + v[0] + "\" WHERE id = " + id
-			fmt.Println(query)
-			_,err_update := tx.Query(query)
-			if err_update != nil {
-				tx.Rollback()
-			}
+		if k != "id"{
+			set_query += k + " = \"" + v[0] +"\"" +  ","
 		}
 	}
+	set_query = strings.TrimRight(set_query, ",")
+	fmt.Println(set_query)
+	query := "UPDATE users SET " + set_query + " WHERE id = " + id
+	fmt.Println(query)
+	_,err_update := tx.Query(query)
+	if err_update != nil {
+		tx.Rollback()
+	}
+
 	tx.Commit()
 
 }
