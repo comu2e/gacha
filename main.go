@@ -27,38 +27,38 @@ func fetchUser(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	id := queryMap["id"][0]
+	fmt.Println(id)
 
 	rows,err := db.Query("SELECT * FROM users where id = ?",id)
-
 	if err != nil{
 		log.Fatal(err)
 	}
 	//TODO userの情報を取得する
 	//TODO jsonに出力する。
 	for rows.Next() {
-		user := &model.User{}
-		rows.Scan(&user.Username)
-	}
+		var user model.User
 
-	output := map[string]interface{}{
-		//ここにuserの情報を入れていく。
-		"data":model.Character{1,"s"},
-		//イメージこんな感じ
-		//Characterもあるので注意　relations
-		"userdata":model.User{1,"s",
-			"s","s","s",
-			"s","s","s"},
-		"message":"data",
-	}
-
-	defer func() {
-		outjson ,er := json.Marshal(output)
-		if er != nil {
-			log.Fatal(er)
+		err = rows.Scan(&user.Username,
+			 			 &user.Firstname,&user.Lastname,
+			 			 &user.Email,&user.Password,
+			 			 &user.Phone,&user.UserStatus,&user.Id)
+		fmt.Println(user.Id, user.Username)
+		output := map[string]interface{}{
+			//Todo id = 2で得られるが、id=2aとしても得られるので修正する。
+			//Todo error のときのjsonも準備する。
+			"data":user,
+			"message":"user data is fetched",
 		}
-		w.Header().Set("content-Type","application/json")
-		fmt.Fprint(w,string(outjson))
-	}()
+		defer func() {
+			outjson ,er := json.Marshal(output)
+			if er != nil {
+				log.Fatal(er)
+			}
+			w.Header().Set("content-Type","application/json")
+			fmt.Fprint(w,string(outjson))
+		}()
+
+	}
 
 }
 
