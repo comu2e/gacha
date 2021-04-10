@@ -8,13 +8,13 @@ import (
 	"strings"
 )
 
-func open_db() (*sql.DB, error) {
+func openDb() (*sql.DB, error) {
 	db, err := sql.Open("mysql", "root:password@/testdb")
 	return db,err
 }
 
-func createUser(w http.ResponseWriter,req *http.Request) {
-	db,err := open_db()
+func createUser(_ http.ResponseWriter,req *http.Request) {
+	db,err := openDb()
 	if err != nil {
 		panic(err.Error())
 	}
@@ -31,7 +31,7 @@ func createUser(w http.ResponseWriter,req *http.Request) {
 	}
 	for rows.Next() {
 		var id int
-		rows.Scan(&id)
+		_ = rows.Scan(&id)
 		fmt.Println(id)
 		queryMap := req.URL.Query()
 		if queryMap ==nil {
@@ -46,27 +46,27 @@ func createUser(w http.ResponseWriter,req *http.Request) {
 		UserStatus := queryMap["UserStatus"]
 
 		next_id := id + 1
-		_,err_insert := tx.Query("INSERT into users value(?,?,?,?,?,?,?,?)",
+		_, errInsert := tx.Query("INSERT into users value(?,?,?,?,?,?,?,?)",
 			Username[0],FirstName[0],LastName[0],Email[0],Password[0],Phone[0],UserStatus[0],next_id)
 		fmt.Println(queryMap)
-		if err_insert != nil{
+		if errInsert != nil{
 			//失敗したらロールバック
-			tx.Rollback()
+			_ = tx.Rollback()
 		}
 		//成功したらCommit
-		tx.Commit()
+		_ = tx.Commit()
 		}
 	}
 
-func updateUser(w http.ResponseWriter,req *http.Request) {
-	db,err := open_db()
+func updateUser(_ http.ResponseWriter,req *http.Request) {
+	db,err := openDb()
 	if err != nil {
 		panic(err.Error())
 	}
 	defer db.Close()
 
 	//transactionの開始
-	tx,err := db.Begin()
+	var tx,_ = db.Begin()
 
 	//auto incrementで追加
 	queryMap := req.URL.Query()
@@ -74,8 +74,7 @@ func updateUser(w http.ResponseWriter,req *http.Request) {
 			return
 		}
 	id := queryMap["id"][0]
-	//TODO:UPDATE SQL 最大で7件発行されるので、１件にまとめられないか
-	//予めquery文作成しておくことで対応。
+	//TODO:UPDATE SQL 最大で7件発行されるので、１件にまとめられないか 予めquery文作成しておくことで対応。
 	set_query := ""
 	for k,v := range queryMap{
 
@@ -87,17 +86,17 @@ func updateUser(w http.ResponseWriter,req *http.Request) {
 	fmt.Println(set_query)
 	query := "UPDATE users SET " + set_query + " WHERE id = " + id
 	fmt.Println(query)
-	_,err_update := tx.Query(query)
-	if err_update != nil {
-		tx.Rollback()
+	_, errUpdate := tx.Query(query)
+	if errUpdate != nil {
+		_ = tx.Rollback()
 	}
 
-	tx.Commit()
+	_ = tx.Commit()
 
 }
 
-func deleteUser(w http.ResponseWriter, req *http.Request) {
-	db,err := open_db()
+func deleteUser(_ http.ResponseWriter, req *http.Request) {
+	db,err := openDb()
 	if err != nil{
 		return
 	}
@@ -107,24 +106,24 @@ func deleteUser(w http.ResponseWriter, req *http.Request) {
 	queryMap := req.URL.Query()
 
 	deleteUserId := queryMap["user_id"][0]
-	_,err_del := tx.Query("DELETE FROM users where id = ?", deleteUserId)
-	if err_del != nil{
-		tx.Rollback()
+	_, errDel := tx.Query("DELETE FROM users where id = ?", deleteUserId)
+	if errDel != nil{
+		_ = tx.Rollback()
 	}
-	tx.Commit()
+	_ = tx.Commit()
 
 }
 func headers(w http.ResponseWriter, req *http.Request) {
 	for name,headers := range req.Header{
 		for _,h := range headers{
-			fmt.Fprintf(w,"%v : %v\n",name,h)
+			_, _ = fmt.Fprintf(w, "%v : %v\n", name, h)
 		}
 	}
 }
 
 func main() {
 
-	db,err := open_db()
+	db,err := openDb()
 
 	if err != nil {
 		panic(err.Error())
@@ -137,5 +136,5 @@ func main() {
 	http.HandleFunc("/user/update/", updateUser)
 	http.HandleFunc("/user/delete/", deleteUser)
 	http.HandleFunc("/headers",headers)
-	http.ListenAndServe(":8090",nil)
+	_ = http.ListenAndServe(":8090", nil)
 }
