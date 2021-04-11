@@ -87,17 +87,17 @@ func createUser(_ http.ResponseWriter,req *http.Request) {
 		if queryMap ==nil {
 			return
 		}
-		Username := queryMap["Username"]
-		FirstName := queryMap["FirstName"]
-		LastName := queryMap["LastName"]
-		Email := queryMap["Email"]
-		Password := queryMap["Password"]
-		Phone := queryMap["Phone"]
-		UserStatus := queryMap["UserStatus"]
+		userName := queryMap["Username"]
+		firstName := queryMap["FirstName"]
+		lastName := queryMap["LastName"]
+		email := queryMap["Email"]
+		password := queryMap["Password"]
+		phoneNumber := queryMap["Phone"]
+		userStatus := queryMap["UserStatus"]
 
 		nextId := id + 1
 		_, errInsert := tx.Query("INSERT into users value(?,?,?,?,?,?,?,?)",
-			Username[0],FirstName[0],LastName[0],Email[0],Password[0],Phone[0],UserStatus[0], nextId)
+			userName[0],firstName[0],lastName[0],email[0],password[0],phoneNumber[0],userStatus[0], nextId)
 		fmt.Println(queryMap)
 		if errInsert != nil{
 			//失敗したらロールバック
@@ -124,7 +124,6 @@ func updateUser(_ http.ResponseWriter,req *http.Request) {
 			return
 		}
 	id := queryMap["id"][0]
-	//TODO:UPDATE SQL 最大で7件発行されるので、１件にまとめられないか 予めquery文作成しておくことで対応。
 	setQuery := ""
 	for k,v := range queryMap{
 		if k != "id"{
