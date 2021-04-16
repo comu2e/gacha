@@ -8,7 +8,7 @@ type User struct {
 	Email      string
 	Password   string
 	Phone      string
-	UserStatus string
+	UserStatus bool
 	//Character []Character
 }
 

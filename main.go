@@ -8,6 +8,7 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 )
 
@@ -16,7 +17,7 @@ func openDb() (*sql.DB, error) {
 	return db,err
 }
 
-func fetchUser(w http.ResponseWriter, req *http.Request) {
+func getUser(w http.ResponseWriter, req *http.Request) {
 	db,err := openDb()
 	if err != nil {
 		return
@@ -38,10 +39,10 @@ func fetchUser(w http.ResponseWriter, req *http.Request) {
 	for rows.Next() {
 		var user model.User
 
-		err = rows.Scan(&user.Username,
+		err = rows.Scan(&user.Id,&user.Username,
 			 			 &user.Firstname,&user.Lastname,
 			 			 &user.Email,&user.Password,
-			 			 &user.Phone,&user.UserStatus,&user.Id)
+			 			 &user.Phone,&user.UserStatus)
 		fmt.Println(user.Id, user.Username)
 		output := map[string]interface{}{
 			//Todo id = 2で得られるが、id=2aとしても得られるので修正する。
@@ -55,7 +56,7 @@ func fetchUser(w http.ResponseWriter, req *http.Request) {
 				log.Fatal(er)
 			}
 			w.Header().Set("content-Type","application/json")
-			fmt.Fprint(w,string(outjson))
+			_, err = fmt.Fprint(w, string(outjson))
 		}()
 
 	}
@@ -64,102 +65,119 @@ func fetchUser(w http.ResponseWriter, req *http.Request) {
 
 
 func createUser(_ http.ResponseWriter,req *http.Request) {
-	db,err := openDb()
-	if err != nil {
-		panic(err.Error())
+	if req.Method == http.MethodPost  {
+		db,err := openDb()
+		if err != nil {
+			panic(err.Error())
+		}
+		defer db.Close()
+
+		//transactionの開始
+		tx,_ := db.Begin()
+
+		//auto incrementで追加
+		rows,err := db.Query("SELECT max(id) FROM users")
+
+		if err != nil {
+			log.Fatal(err)
+		}
+		for rows.Next() {
+			var id int
+			_ = rows.Scan(&id)
+			fmt.Println(id)
+			queryMap := req.URL.Query()
+			if queryMap ==nil {
+				return
+			}
+
+			valueQuery := ""
+			columnQuery := ""
+			for k,v := range queryMap {
+					valueQuery += "\""+v[0] +"\"" + ","
+					columnQuery += k + ","
+			}
+
+			valueQuery += strconv.Itoa(id + 1) + ","
+			columnQuery += "id" + ","
+			valueQuery = strings.TrimRight(valueQuery, ",")
+			columnQuery = strings.TrimRight(columnQuery, ",")
+
+			fmt.Println(valueQuery)
+			fmt.Println(columnQuery)
+
+			query := "("+columnQuery+") " + "VALUES("+valueQuery+");"
+			_, err := tx.Query("INSERT into users"+ query)
+			fmt.Println(query)
+			if err != nil{
+			//	//失敗したらロールバック
+				_ = tx.Rollback()
+				return
+			//
+			}
+			////成功したらCommit
+			_ = tx.Commit()
+		}
 	}
-	defer db.Close()
 
-	//transactionの開始
-	tx,_ := db.Begin()
-
-	//auto incrementで追加
-	rows,err := db.Query("SELECT max(id) FROM users")
-
-	if err != nil {
-		log.Fatal(err)
 	}
-	for rows.Next() {
-		var id int
-		_ = rows.Scan(&id)
-		fmt.Println(id)
+
+func updateUser(w http.ResponseWriter,req *http.Request) {
+
+	if  req.Method == http.MethodPut{
+		db,err := openDb()
+		if err != nil {
+			panic(err.Error())
+		}
+		defer db.Close()
+		//transactionの開始
+		var tx,_ = db.Begin()
+		//auto incrementで追加
 		queryMap := req.URL.Query()
 		if queryMap ==nil {
 			return
 		}
-		Username := queryMap["Username"]
-		FirstName := queryMap["FirstName"]
-		LastName := queryMap["LastName"]
-		Email := queryMap["Email"]
-		Password := queryMap["Password"]
-		Phone := queryMap["Phone"]
-		UserStatus := queryMap["UserStatus"]
-
-		nextId := id + 1
-		_, errInsert := tx.Query("INSERT into users value(?,?,?,?,?,?,?,?)",
-			Username[0],FirstName[0],LastName[0],Email[0],Password[0],Phone[0],UserStatus[0], nextId)
-		fmt.Println(queryMap)
-		if errInsert != nil{
-			//失敗したらロールバック
+		id := queryMap["id"][0]
+		setQuery := ""
+		for k,v := range queryMap{
+			if k != "id"{
+				setQuery += k + " = \"" + v[0] +"\"" +  ","
+			}
+		}
+		setQuery = strings.TrimRight(setQuery, ",")
+		fmt.Println(setQuery)
+		query := "UPDATE users SET " + setQuery + " WHERE id = " + id
+		fmt.Println(query)
+		_, errUpdate := tx.Query(query)
+		if errUpdate != nil {
 			_ = tx.Rollback()
-			log.Fatal(errInsert)
-
 		}
-		//成功したらCommit
+
 		_ = tx.Commit()
-		}
 	}
 
-func updateUser(_ http.ResponseWriter,req *http.Request) {
-	db,err := openDb()
-	if err != nil {
-		panic(err.Error())
-	}
-	defer db.Close()
-	//transactionの開始
-	var tx,_ = db.Begin()
-	//auto incrementで追加
-	queryMap := req.URL.Query()
-		if queryMap ==nil {
-			return
-		}
-	id := queryMap["id"][0]
-	//TODO:UPDATE SQL 最大で7件発行されるので、１件にまとめられないか 予めquery文作成しておくことで対応。
-	setQuery := ""
-	for k,v := range queryMap{
-		if k != "id"{
-			setQuery += k + " = \"" + v[0] +"\"" +  ","
-		}
-	}
-	setQuery = strings.TrimRight(setQuery, ",")
-	fmt.Println(setQuery)
-	query := "UPDATE users SET " + setQuery + " WHERE id = " + id
-	fmt.Println(query)
-	_, errUpdate := tx.Query(query)
-	if errUpdate != nil {
-		_ = tx.Rollback()
-	}
-
-	_ = tx.Commit()
 
 }
 
 func deleteUser(_ http.ResponseWriter, req *http.Request) {
-	db,err := openDb()
-	if err != nil{
-		return
-	}
-	defer db.Close()
-	tx,_ := db.Begin()
+	if req.Method == http.MethodDelete {
 
-	queryMap := req.URL.Query()
+		db,err := openDb()
+		if err != nil{
+			return
+		}
+		defer db.Close()
+		tx,_ := db.Begin()
 
-	deleteUserId := queryMap["user_id"][0]
-	_, errDel := tx.Query("DELETE FROM users where id = ?", deleteUserId)
-	if errDel != nil{
-		_ = tx.Rollback()
+		queryMap := req.URL.Query()
+
+		deleteUserId := queryMap["user_id"][0]
+		_, errDel := tx.Query("DELETE FROM users where id = ?", deleteUserId)
+		if errDel != nil{
+			_ = tx.Rollback()
+		}
+		_ = tx.Commit()
 	}
-	_ = tx.Commit()
+
 
 }
 func headers(w http.ResponseWriter, req *http.Request) {
@@ -181,7 +199,7 @@ func main() {
 
 	fmt.Println("successfully connected")
 	//TODO:GET,PUT,DELETEはどのように指定すればいいのか確認する
-	http.HandleFunc("/user/get/", fetchUser)
+	http.HandleFunc("/user/get/", getUser)
 	http.HandleFunc("/user/create/", createUser)
 	http.HandleFunc("/user/update/", updateUser)
 	http.HandleFunc("/user/delete/", deleteUser)
