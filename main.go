@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
-	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -17,7 +16,7 @@ func openDb() (*sql.DB, error) {
 	return db,err
 }
 
-func getUser(w http.ResponseWriter, req *http.Request) {
+func getUser(w http.ResponseWriter, req *http.Request)  {
 	db,err := openDb()
 	if err != nil {
 		return
@@ -32,7 +31,7 @@ func getUser(w http.ResponseWriter, req *http.Request) {
 
 	rows,err := db.Query("SELECT * FROM users where id = ?",id)
 	if err != nil{
-		log.Fatal(err)
+		return
 	}
 	//TODO userの情報を取得する
 	//TODO jsonに出力する。
@@ -50,25 +49,27 @@ func getUser(w http.ResponseWriter, req *http.Request) {
 			"data":user,
 			"message":"user data is fetched",
 		}
-		defer func() {
-			outjson ,er := json.Marshal(output)
-			if er != nil {
-				log.Fatal(er)
+		defer func() error{
+			outjson ,err := json.Marshal(output)
+			if err != nil {
+				return err
 			}
 			w.Header().Set("content-Type","application/json")
 			_, err = fmt.Fprint(w, string(outjson))
+			return err
 		}()
 
 	}
 
+	return
 }
 
 
-func createUser(_ http.ResponseWriter,req *http.Request) {
+func createUser(_ http.ResponseWriter,req *http.Request)  {
 	if req.Method == http.MethodPost  {
 		db,err := openDb()
 		if err != nil {
-			panic(err.Error())
+			return
 		}
 		defer db.Close()
 
@@ -79,33 +80,33 @@ func createUser(_ http.ResponseWriter,req *http.Request) {
 		rows,err := db.Query("SELECT max(id) FROM users")
 
 		if err != nil {
-			log.Fatal(err)
+			return
 		}
 		for rows.Next() {
 			var id int
-			_ = rows.Scan(&id)
+			err = rows.Scan(&id)
 			fmt.Println(id)
-			queryMap := req.URL.Query()
-			if queryMap ==nil {
+			queryMap    := req.URL.Query()
+			if queryMap == nil {
 				return
 			}
 
-			valueQuery := ""
+			valueQuery  := ""
 			columnQuery := ""
 			for k,v := range queryMap {
-					valueQuery += "\""+v[0] +"\"" + ","
+					valueQuery  += "\""+v[0] +"\"" + ","
 					columnQuery += k + ","
 			}
 
-			valueQuery += strconv.Itoa(id + 1) + ","
+			valueQuery  += strconv.Itoa(id + 1) + ","
 			columnQuery += "id" + ","
-			valueQuery = strings.TrimRight(valueQuery, ",")
+			valueQuery  = strings.TrimRight(valueQuery  , ",")
 			columnQuery = strings.TrimRight(columnQuery, ",")
 
 			fmt.Println(valueQuery)
 			fmt.Println(columnQuery)
 
-			query := "("+columnQuery+") " + "VALUES("+valueQuery+");"
+			query  := "("+columnQuery+") " + "VALUES("+valueQuery+");"
 			_, err := tx.Query("INSERT into users"+ query)
 			fmt.Println(query)
 			if err != nil{
@@ -119,18 +120,19 @@ func createUser(_ http.ResponseWriter,req *http.Request) {
 		}
 	}
 
-	}
+	return
+}
 
 func updateUser(w http.ResponseWriter,req *http.Request) {
 
 	if  req.Method == http.MethodPut{
 		db,err := openDb()
 		if err != nil {
-			panic(err.Error())
+			return
 		}
 		defer db.Close()
 		//transactionの開始
-		var tx,_ = db.Begin()
+		tx,err := db.Begin()
 		//auto incrementで追加
 		queryMap := req.URL.Query()
 		if queryMap ==nil {
@@ -147,15 +149,15 @@ func updateUser(w http.ResponseWriter,req *http.Request) {
 		fmt.Println(setQuery)
 		query := "UPDATE users SET " + setQuery + " WHERE id = " + id
 		fmt.Println(query)
-		_, errUpdate := tx.Query(query)
-		if errUpdate != nil {
-			_ = tx.Rollback()
+		tx.Query(query)
+		if err != nil {
+			err = tx.Rollback()
+			return
 		}
 
 		_ = tx.Commit()
 	}
-
-
+	return
 }
 
 func deleteUser(_ http.ResponseWriter, req *http.Request) {
@@ -187,22 +189,65 @@ func headers(w http.ResponseWriter, req *http.Request) {
 		}
 	}
 }
+func drawGacha(w http.ResponseWriter, req *http.Request)  {
+	if req.Method == http.MethodGet{
+		db, err := openDb()
+		if err != nil {
+			return
+		}
+		defer db.Close()
 
+		queryMap := req.URL.Query()
+		if queryMap ==nil {
+			return
+		}
+
+		drawTimes := queryMap["times"][0]
+		//Todo:gachaを複数回引いたときに,返すdata(json)はgachatimes分返すようにする。
+		for _ = range drawTimes{
+			rows, err := db.Query("SELECT * FROM characters ORDER BY RAND() LIMIT 1")
+			if err != nil {
+				return
+			}
+			for rows.Next() {
+				var character model.Character
+				err = rows.Scan(&character.CharacterName, &character.Id)
+
+				output := map[string]interface{}{
+
+					"data":    character,
+					"message": "character data is fetched",
+				}
+				defer func() error {
+					outjson, err := json.Marshal(output)
+					if err != nil {
+						return err
+					}
+					w.Header().Set("content-Type", "application/json")
+					_, err = fmt.Fprint(w, string(outjson))
+					return err
+				}()
+
+			}
+		}
+
+	}
+}
 func main() {
 
-	db,err := openDb()
-
-	if err != nil {
-		panic(err.Error())
-	}
-	defer db.Close()
+	//db,err := openDb()
+	//
+	//if err != nil {
+	//	panic(err.Error())
+	//}
+	//defer db.Close()
 
 	fmt.Println("successfully connected")
-	//TODO:GET,PUT,DELETEはどのように指定すればいいのか確認する
 	http.HandleFunc("/user/get/", getUser)
 	http.HandleFunc("/user/create/", createUser)
 	http.HandleFunc("/user/update/", updateUser)
 	http.HandleFunc("/user/delete/", deleteUser)
+	http.HandleFunc("/gacha/draw/", drawGacha)
 	http.HandleFunc("/headers",headers)
 	_ = http.ListenAndServe(":8090", nil)
 }
