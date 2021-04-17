@@ -203,9 +203,8 @@ func drawGacha(w http.ResponseWriter, req *http.Request)  {
 		}
 
 		drawTimes := queryMap["times"][0]
-		//Todo:gachaを複数回引いたときに,返すdata(json)はgachatimes分返すようにする。
-		for _ = range drawTimes{
-			rows, err := db.Query("SELECT * FROM characters ORDER BY RAND() LIMIT 1")
+
+			rows, err := db.Query("SELECT * FROM characters ORDER BY RAND() LIMIT ?",drawTimes)
 			if err != nil {
 				return
 			}
@@ -228,7 +227,6 @@ func drawGacha(w http.ResponseWriter, req *http.Request)  {
 					return err
 				}()
 
-			}
 		}
 
 	}
