@@ -190,6 +190,23 @@ func headers(w http.ResponseWriter, req *http.Request) {
 	}
 }
 func drawGacha(w http.ResponseWriter, req *http.Request)  {
+	/**
+	input:times=2
+	return
+	{
+	    "data": [
+	        {
+	            "Id": 2,
+	            "CharacterName": "character"
+	        },
+	        {
+	            "Id": 12,
+	            "CharacterName": "3333"
+	        }
+	    ],
+	    "message": "character data is fetched"
+	}
+	*/
 	if req.Method == http.MethodGet{
 		db, err := openDb()
 		if err != nil {
@@ -203,44 +220,34 @@ func drawGacha(w http.ResponseWriter, req *http.Request)  {
 		}
 
 		drawTimes := queryMap["times"][0]
-		//Todo:gachaを複数回引いたときに,返すdata(json)はgachatimes分返すようにする。
-		for _ = range drawTimes{
-			rows, err := db.Query("SELECT * FROM characters ORDER BY RAND() LIMIT 1")
-			if err != nil {
-				return
-			}
-			for rows.Next() {
-				var character model.Character
-				err = rows.Scan(&character.CharacterName, &character.Id)
 
-				output := map[string]interface{}{
-
-					"data":    character,
-					"message": "character data is fetched",
-				}
-				defer func() error {
-					outjson, err := json.Marshal(output)
-					if err != nil {
-						return err
-					}
-					w.Header().Set("content-Type", "application/json")
-					_, err = fmt.Fprint(w, string(outjson))
-					return err
-				}()
-
-			}
+		rows, err := db.Query("SELECT * FROM characters ORDER BY RAND() LIMIT ?",drawTimes)
+		if err != nil {
+			return
 		}
 
+		characters := []model.Character{}
+		for rows.Next() {
+			var character model.Character
+			err = rows.Scan(&character.CharacterName, &character.Id)
+			characters = append(characters,character)
+		}
+		output := map[string]interface{}{
+			"data":    characters,
+			"message": "character data is fetched",
+		}
+		defer func() error {
+			outjson, err := json.Marshal(output)
+			if err != nil {
+				return err
+			}
+			w.Header().Set("content-Type", "application/json")
+			_, err = fmt.Fprint(w, string(outjson))
+			return err
+		}()
 	}
 }
 func main() {
-
-	//db,err := openDb()
-	//
-	//if err != nil {
-	//	panic(err.Error())
-	//}
-	//defer db.Close()
 
 	fmt.Println("successfully connected")
 	http.HandleFunc("/user/get/", getUser)
