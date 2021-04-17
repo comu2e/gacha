@@ -221,7 +221,7 @@ func drawGacha(w http.ResponseWriter, req *http.Request)  {
 
 		drawTimes := queryMap["times"][0]
 
-		rows, err := db.Query("SELECT * FROM characters ORDER BY RAND() LIMIT ?",drawTimes)
+		rows, err := db.Query("SELECT CharacterName,id FROM characters ORDER BY RAND() LIMIT ?",drawTimes)
 		if err != nil {
 			return
 		}
@@ -247,6 +247,43 @@ func drawGacha(w http.ResponseWriter, req *http.Request)  {
 		}()
 	}
 }
+
+func getCharacterList(w http.ResponseWriter,res *http.Request)  {
+	if res.Method == http.MethodGet {
+		db,err := openDb()
+		if err != nil {
+			return
+		}
+
+		defer db.Close()
+		queryMap := res.URL.Query()
+		if queryMap == nil{
+			return
+		}
+		user_id := queryMap["user_id"][0]
+		rows, err := db.Query("SELECT character_id FROM user_character where user_id = ?",user_id)
+
+		characters := []model.Character{}
+		for rows.Next() {
+			var character model.Character
+			err = rows.Scan(&character.Id)
+			characters = append(characters,character)
+		}
+		output := map[string]interface{}{
+			"data":    characters,
+			"message": "character data",
+		}
+		defer func() error {
+			outjson, err := json.Marshal(output)
+			if err != nil {
+				return err
+			}
+			w.Header().Set("content-Type", "application/json")
+			_, err = fmt.Fprint(w, string(outjson))
+			return err
+		}()
+	}
+}
 func main() {
 
 	fmt.Println("successfully connected")
@@ -255,6 +292,7 @@ func main() {
 	http.HandleFunc("/user/update/", updateUser)
 	http.HandleFunc("/user/delete/", deleteUser)
 	http.HandleFunc("/gacha/draw/", drawGacha)
+	http.HandleFunc("/character/list/", getCharacterList)
 	http.HandleFunc("/headers",headers)
 	_ = http.ListenAndServe(":8090", nil)
 }
