@@ -66,86 +66,96 @@ func getUser(w http.ResponseWriter, req *http.Request)  {
 }
 
 
-func createUser(w http.ResponseWriter,req *http.Request)  {
-	if req.Method == http.MethodPost  {
-		db,err := openDb()
+func createUser(w http.ResponseWriter,req *http.Request) {
+	if req.Method == http.MethodPost {
+		db, err := openDb()
 		if err != nil {
 			return
 		}
 		defer db.Close()
 
 		//transactionの開始
-		tx,_ := db.Begin()
+		tx, _ := db.Begin()
 
 		//auto incrementで追加
-		rows,err := db.Query("SELECT max(id) FROM users")
+		rows, err := db.Query("SELECT max(id) FROM users")
+		//usernameをユニークにするためにusernameのリストを取得する。
 
 		if err != nil {
 			http.Error(w, err.Error(), 401)
 			return
 		}
+
 		for rows.Next() {
 			var id int
 			err = rows.Scan(&id)
-			fmt.Println(id)
-			queryMap    := req.URL.Query()
+			queryMap := req.URL.Query()
 			if queryMap == nil {
 				http.Error(w, err.Error(), 401)
 				return
 			}
 
-			valueQuery  := ""
+			valueQuery := ""
 			columnQuery := ""
-			for k,v := range queryMap {
-					valueQuery  += "\""+v[0] +"\"" + ","
-					columnQuery += k + ","
-			}
-
-			valueQuery  += strconv.Itoa(id + 1) + ","
-			columnQuery += "id" + ","
-
-			xToken := randomString(20)
-			valueQuery += "\"" + xToken + "\""
-			columnQuery += "xToken" + ","
-
-			valueQuery  = strings.TrimRight(valueQuery  , ",")
-			columnQuery = strings.TrimRight(columnQuery, ",")
-
-
-			fmt.Println(valueQuery)
-			fmt.Println(columnQuery)
-
-			query  := "("+columnQuery+") " + "VALUES("+valueQuery+");"
-			_, err := tx.Query("INSERT into users"+ query)
-			fmt.Println(query)
-			if err != nil{
-			//	//失敗したらロールバック
-				_ = tx.Rollback()
-				http.Error(w, err.Error(), 401)
-				return
-			//
-			}
-			////成功したらCommit
-			fmt.Println("Success")
-			_ = tx.Commit()
-			output := map[string]interface{}{
-				"x-token":  xToken,
-				"message": "The user account was successfully created.",
-				"status" : true,
-			}
-			defer func() error {
-				outjson, err := json.Marshal(output)
-				if err != nil {
-					return err
+			for k, v := range queryMap {
+				if k == "Username" {
+					queryUsername := v[0]
+					fmt.Println(queryUsername)
+					rowsCount, _ := db.Query("SELECT count(Username) as hasUserCreated  from users where username = ?", queryUsername)
+					for rowsCount.Next() {
+						var hasUserCreated int
+						rowsCount.Scan(&hasUserCreated)
+						fmt.Println(hasUserCreated)
+						if hasUserCreated != 0 {
+							fmt.Println("Created")
+							//http.Error(w, "Error:User has Created", 401)
+						}
+						valueQuery  += "\"" + queryUsername + "\"" + ","
+						columnQuery += k + ","
+					}
 				}
-				w.Header().Set("content-Type", "application/json")
-				_, err = fmt.Fprint(w, string(outjson))
-				return err
-			}()
+				valueQuery  += "\"" + v[0] + "\"" + ","
+				columnQuery += k + ","
+
+				valueQuery  += strconv.Itoa(id+1) + ","
+				columnQuery += "id" + ","
+
+				xToken := randomString(20)
+				valueQuery += "\"" + xToken + "\""
+				columnQuery += "xToken" + ","
+
+				valueQuery = strings.TrimRight(valueQuery, ",")
+				columnQuery = strings.TrimRight(columnQuery, ",")
+
+				query := "(" + columnQuery + ") " + "VALUES(" + valueQuery + ");"
+				_, err := tx.Query("INSERT into users" + query)
+				fmt.Println(query)
+				if err != nil {
+					//	//失敗したらロールバック
+					_ = tx.Rollback()
+					http.Error(w, err.Error(), 401)
+					return
+				}
+				////成功したらCommit
+				_ = tx.Commit()
+				output := map[string]interface{}{
+					"x-token": xToken,
+					"message": "The user account was successfully created.",
+					"status":  true,
+				}
+				defer func() error {
+					outjson, err := json.Marshal(output)
+					if err != nil {
+						return err
+					}
+					w.Header().Set("content-Type", "application/json")
+					_, err = fmt.Fprint(w, string(outjson))
+					return err
+				}()
+
+			}
 		}
 	}
-
-	return
 }
 
 func fetchXtoken(w http.ResponseWriter,req *http.Request)  {
