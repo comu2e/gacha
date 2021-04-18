@@ -53,7 +53,7 @@ func getUser(w http.ResponseWriter, req *http.Request)  {
 		defer func() error{
 			outjson ,err := json.Marshal(output)
 			if err != nil {
-				return err
+				return	err
 			}
 			w.Header().Set("content-Type","application/json")
 			_, err = fmt.Fprint(w, string(outjson))
@@ -81,6 +81,7 @@ func createUser(w http.ResponseWriter,req *http.Request)  {
 		rows,err := db.Query("SELECT max(id) FROM users")
 
 		if err != nil {
+			http.Error(w, err.Error(), 401)
 			return
 		}
 		for rows.Next() {
@@ -89,6 +90,7 @@ func createUser(w http.ResponseWriter,req *http.Request)  {
 			fmt.Println(id)
 			queryMap    := req.URL.Query()
 			if queryMap == nil {
+				http.Error(w, err.Error(), 401)
 				return
 			}
 
@@ -119,7 +121,7 @@ func createUser(w http.ResponseWriter,req *http.Request)  {
 			if err != nil{
 			//	//失敗したらロールバック
 				_ = tx.Rollback()
-
+				http.Error(w, err.Error(), 401)
 				return
 			//
 			}
@@ -129,6 +131,7 @@ func createUser(w http.ResponseWriter,req *http.Request)  {
 			output := map[string]interface{}{
 				"x-token":  xToken,
 				"message": "The user account was successfully created.",
+				"status" : true,
 			}
 			defer func() error {
 				outjson, err := json.Marshal(output)
@@ -142,6 +145,50 @@ func createUser(w http.ResponseWriter,req *http.Request)  {
 		}
 	}
 
+	return
+}
+
+func fetchXtoken(w http.ResponseWriter,req *http.Request)  {
+	if req.Method ==  http.MethodGet {
+
+		queryMap := req.URL.Query()
+		if queryMap == nil {
+			return
+		}
+		userName := queryMap["Username"][0]
+		passWord := queryMap["Password"][0]
+
+		querySQL := fmt.Sprintf("SELECT xToken from users where Username = \"%s\" and Password = \"%s\" LIMIT 1", userName, passWord)
+
+		fmt.Println(querySQL)
+		db, _ := openDb()
+		rows, _ := db.Query(querySQL)
+		defer db.Close()
+
+		for rows.Next() {
+			var user model.User
+
+			_ = rows.Scan(&user.XToken)
+
+			fmt.Println(user.XToken)
+			output := map[string]interface{}{
+				"data":user.XToken,
+				"status":true,
+				"message":"user data is fetched",
+			}
+			fmt.Println(output)
+			defer func() error{
+				outjson ,err := json.Marshal(output)
+				if err != nil {
+					return	err
+				}
+				w.Header().Set("content-Type","application/json")
+				_, err = fmt.Fprint(w, string(outjson))
+				return err
+			}()
+
+		}
+	}
 	return
 }
 func randomString(n int) string {
@@ -241,6 +288,7 @@ func drawGacha(w http.ResponseWriter, req *http.Request)  {
 	if req.Method == http.MethodGet{
 		db, err := openDb()
 		if err != nil {
+			http.Error(w, err.Error(), 401)
 			return
 		}
 		defer db.Close()
@@ -320,6 +368,7 @@ func main() {
 
 	fmt.Println("successfully connected")
 	http.HandleFunc("/user/get/", getUser)
+	http.HandleFunc("/user/fetch/", fetchXtoken)
 	http.HandleFunc("/user/create/", createUser)
 	http.HandleFunc("/user/update/", updateUser)
 	http.HandleFunc("/user/delete/", deleteUser)

@@ -9,6 +9,7 @@ type User struct {
 	Password   string
 	Phone      string
 	UserStatus bool
+	XToken     string
 	//Character []Character
 }
 
