@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
+	"math/rand"
 	"net/http"
 	"strconv"
 	"strings"
@@ -100,8 +101,13 @@ func createUser(_ http.ResponseWriter,req *http.Request)  {
 
 			valueQuery  += strconv.Itoa(id + 1) + ","
 			columnQuery += "id" + ","
+
+			valueQuery += "\"" +randomString(20) + "\""
+			columnQuery += "xToken" + ","
+
 			valueQuery  = strings.TrimRight(valueQuery  , ",")
 			columnQuery = strings.TrimRight(columnQuery, ",")
+
 
 			fmt.Println(valueQuery)
 			fmt.Println(columnQuery)
@@ -112,15 +118,26 @@ func createUser(_ http.ResponseWriter,req *http.Request)  {
 			if err != nil{
 			//	//失敗したらロールバック
 				_ = tx.Rollback()
+
 				return
 			//
 			}
 			////成功したらCommit
+			fmt.Println("Success")
 			_ = tx.Commit()
 		}
 	}
 
 	return
+}
+func randomString(n int) string {
+	var letter = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
+
+	b := make([]rune, n)
+	for i := range b {
+		b[i] = letter[rand.Intn(len(letter))]
+	}
+	return string(b)
 }
 
 func updateUser(w http.ResponseWriter,req *http.Request) {
@@ -284,6 +301,7 @@ func getCharacterList(w http.ResponseWriter,res *http.Request)  {
 		}()
 	}
 }
+
 func main() {
 
 	fmt.Println("successfully connected")
