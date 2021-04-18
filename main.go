@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
+	"math/rand"
 	"net/http"
 	"strconv"
 	"strings"
@@ -52,7 +53,7 @@ func getUser(w http.ResponseWriter, req *http.Request)  {
 		defer func() error{
 			outjson ,err := json.Marshal(output)
 			if err != nil {
-				return err
+				return	err
 			}
 			w.Header().Set("content-Type","application/json")
 			_, err = fmt.Fprint(w, string(outjson))
@@ -65,7 +66,7 @@ func getUser(w http.ResponseWriter, req *http.Request)  {
 }
 
 
-func createUser(_ http.ResponseWriter,req *http.Request)  {
+func createUser(w http.ResponseWriter,req *http.Request)  {
 	if req.Method == http.MethodPost  {
 		db,err := openDb()
 		if err != nil {
@@ -80,6 +81,7 @@ func createUser(_ http.ResponseWriter,req *http.Request)  {
 		rows,err := db.Query("SELECT max(id) FROM users")
 
 		if err != nil {
+			http.Error(w, err.Error(), 401)
 			return
 		}
 		for rows.Next() {
@@ -88,6 +90,7 @@ func createUser(_ http.ResponseWriter,req *http.Request)  {
 			fmt.Println(id)
 			queryMap    := req.URL.Query()
 			if queryMap == nil {
+				http.Error(w, err.Error(), 401)
 				return
 			}
 
@@ -100,8 +103,14 @@ func createUser(_ http.ResponseWriter,req *http.Request)  {
 
 			valueQuery  += strconv.Itoa(id + 1) + ","
 			columnQuery += "id" + ","
+
+			xToken := randomString(20)
+			valueQuery += "\"" + xToken + "\""
+			columnQuery += "xToken" + ","
+
 			valueQuery  = strings.TrimRight(valueQuery  , ",")
 			columnQuery = strings.TrimRight(columnQuery, ",")
+
 
 			fmt.Println(valueQuery)
 			fmt.Println(columnQuery)
@@ -112,15 +121,84 @@ func createUser(_ http.ResponseWriter,req *http.Request)  {
 			if err != nil{
 			//	//失敗したらロールバック
 				_ = tx.Rollback()
+				http.Error(w, err.Error(), 401)
 				return
 			//
 			}
 			////成功したらCommit
+			fmt.Println("Success")
 			_ = tx.Commit()
+			output := map[string]interface{}{
+				"x-token":  xToken,
+				"message": "The user account was successfully created.",
+				"status" : true,
+			}
+			defer func() error {
+				outjson, err := json.Marshal(output)
+				if err != nil {
+					return err
+				}
+				w.Header().Set("content-Type", "application/json")
+				_, err = fmt.Fprint(w, string(outjson))
+				return err
+			}()
 		}
 	}
 
 	return
+}
+
+func fetchXtoken(w http.ResponseWriter,req *http.Request)  {
+	if req.Method ==  http.MethodGet {
+
+		queryMap := req.URL.Query()
+		if queryMap == nil {
+			return
+		}
+		userName := queryMap["Username"][0]
+		passWord := queryMap["Password"][0]
+
+		querySQL := fmt.Sprintf("SELECT xToken from users where Username = \"%s\" and Password = \"%s\" LIMIT 1", userName, passWord)
+
+		fmt.Println(querySQL)
+		db, _ := openDb()
+		rows, _ := db.Query(querySQL)
+		defer db.Close()
+
+		for rows.Next() {
+			var user model.User
+
+			_ = rows.Scan(&user.XToken)
+
+			fmt.Println(user.XToken)
+			output := map[string]interface{}{
+				"data":user.XToken,
+				"status":true,
+				"message":"user data is fetched",
+			}
+			fmt.Println(output)
+			defer func() error{
+				outjson ,err := json.Marshal(output)
+				if err != nil {
+					return	err
+				}
+				w.Header().Set("content-Type","application/json")
+				_, err = fmt.Fprint(w, string(outjson))
+				return err
+			}()
+
+		}
+	}
+	return
+}
+func randomString(n int) string {
+	var letter = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
+
+	b := make([]rune, n)
+	for i := range b {
+		b[i] = letter[rand.Intn(len(letter))]
+	}
+	return string(b)
 }
 
 func updateUser(w http.ResponseWriter,req *http.Request) {
@@ -210,6 +288,7 @@ func drawGacha(w http.ResponseWriter, req *http.Request)  {
 	if req.Method == http.MethodGet{
 		db, err := openDb()
 		if err != nil {
+			http.Error(w, err.Error(), 401)
 			return
 		}
 		defer db.Close()
@@ -284,10 +363,12 @@ func getCharacterList(w http.ResponseWriter,res *http.Request)  {
 		}()
 	}
 }
+
 func main() {
 
 	fmt.Println("successfully connected")
 	http.HandleFunc("/user/get/", getUser)
+	http.HandleFunc("/user/fetch/", fetchXtoken)
 	http.HandleFunc("/user/create/", createUser)
 	http.HandleFunc("/user/update/", updateUser)
 	http.HandleFunc("/user/delete/", deleteUser)
