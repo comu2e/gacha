@@ -95,27 +95,30 @@ func createUser(w http.ResponseWriter,req *http.Request) {
 				return
 			}
 
-			valueQuery := ""
+			valueQuery  := ""
 			columnQuery := ""
 			for k, v := range queryMap {
 				if k == "Username" {
 					queryUsername := v[0]
-					fmt.Println(queryUsername)
+
 					rowsCount, _ := db.Query("SELECT count(Username) as hasUserCreated  from users where username = ?", queryUsername)
+
 					for rowsCount.Next() {
 						var hasUserCreated int
-						rowsCount.Scan(&hasUserCreated)
+						err = rowsCount.Scan(&hasUserCreated)
 						fmt.Println(hasUserCreated)
+
 						if hasUserCreated != 0 {
-							fmt.Println("Created")
-							//http.Error(w, "Error:User has Created", 401)
+							 fmt.Println("This username is not unique")
+							panic(err)
 						}
-						valueQuery  += "\"" + queryUsername + "\"" + ","
-						columnQuery += k + ","
+
 					}
 				}
-				valueQuery  += "\"" + v[0] + "\"" + ","
+				valueQuery += "\"" + v[0] + "\"" + ","
 				columnQuery += k + ","
+			}
+
 
 				valueQuery  += strconv.Itoa(id+1) + ","
 				columnQuery += "id" + ","
@@ -127,9 +130,10 @@ func createUser(w http.ResponseWriter,req *http.Request) {
 				valueQuery = strings.TrimRight(valueQuery, ",")
 				columnQuery = strings.TrimRight(columnQuery, ",")
 
-				query := "(" + columnQuery + ") " + "VALUES(" + valueQuery + ");"
-				_, err := tx.Query("INSERT into users" + query)
+				query := "(" + columnQuery + ") " + "VALUES (" + valueQuery + ");"
 				fmt.Println(query)
+				_, err := tx.Query("INSERT INTO users" + query)
+
 				if err != nil {
 					//	//失敗したらロールバック
 					_ = tx.Rollback()
@@ -152,9 +156,7 @@ func createUser(w http.ResponseWriter,req *http.Request) {
 					_, err = fmt.Fprint(w, string(outjson))
 					return err
 				}()
-
 			}
-		}
 	}
 }
 
