@@ -66,7 +66,7 @@ func getUser(w http.ResponseWriter, req *http.Request)  {
 }
 
 
-func createUser(_ http.ResponseWriter,req *http.Request)  {
+func createUser(w http.ResponseWriter,req *http.Request)  {
 	if req.Method == http.MethodPost  {
 		db,err := openDb()
 		if err != nil {
@@ -102,7 +102,8 @@ func createUser(_ http.ResponseWriter,req *http.Request)  {
 			valueQuery  += strconv.Itoa(id + 1) + ","
 			columnQuery += "id" + ","
 
-			valueQuery += "\"" +randomString(20) + "\""
+			xToken := randomString(20)
+			valueQuery += "\"" + xToken + "\""
 			columnQuery += "xToken" + ","
 
 			valueQuery  = strings.TrimRight(valueQuery  , ",")
@@ -125,6 +126,19 @@ func createUser(_ http.ResponseWriter,req *http.Request)  {
 			////成功したらCommit
 			fmt.Println("Success")
 			_ = tx.Commit()
+			output := map[string]interface{}{
+				"x-token":  xToken,
+				"message": "The user account was successfully created.",
+			}
+			defer func() error {
+				outjson, err := json.Marshal(output)
+				if err != nil {
+					return err
+				}
+				w.Header().Set("content-Type", "application/json")
+				_, err = fmt.Fprint(w, string(outjson))
+				return err
+			}()
 		}
 	}
 
