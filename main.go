@@ -18,6 +18,10 @@ func openDb() (*sql.DB, error) {
 }
 
 func getUser(w http.ResponseWriter, req *http.Request)  {
+	w.Header().Set("Access-Control-Allow-Headers", "*")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+
 	db,err := openDb()
 	if err != nil {
 		return
@@ -67,6 +71,10 @@ func getUser(w http.ResponseWriter, req *http.Request)  {
 
 
 func createUser(w http.ResponseWriter,req *http.Request) {
+	w.Header().Set("Access-Control-Allow-Headers", "*")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+
 	if req.Method == http.MethodPost {
 		db, err := openDb()
 		if err != nil {
@@ -109,11 +117,13 @@ func createUser(w http.ResponseWriter,req *http.Request) {
 						fmt.Println(hasUserCreated)
 
 						if hasUserCreated != 0 {
-							 fmt.Println("This username is not unique")
+							 //userがunique出ないときにjsonでstatus:falseを返す
+							 //fmt.Fprint("This username is not unique")
 							panic(err)
 						}
 
 					}
+
 				}
 				valueQuery += "\"" + v[0] + "\"" + ","
 				columnQuery += k + ","
@@ -161,6 +171,10 @@ func createUser(w http.ResponseWriter,req *http.Request) {
 }
 
 func fetchXtoken(w http.ResponseWriter,req *http.Request)  {
+	w.Header().Set("Access-Control-Allow-Headers", "*")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+
 	if req.Method ==  http.MethodGet {
 
 		queryMap := req.URL.Query()
@@ -214,6 +228,9 @@ func randomString(n int) string {
 }
 
 func updateUser(w http.ResponseWriter,req *http.Request) {
+	w.Header().Set("Access-Control-Allow-Headers", "*")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 
 	if  req.Method == http.MethodPut{
 		db,err := openDb()
@@ -250,7 +267,11 @@ func updateUser(w http.ResponseWriter,req *http.Request) {
 	return
 }
 
-func deleteUser(_ http.ResponseWriter, req *http.Request) {
+func deleteUser(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("Access-Control-Allow-Headers", "*")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+
 	if req.Method == http.MethodDelete {
 
 		db,err := openDb()
@@ -279,6 +300,9 @@ func headers(w http.ResponseWriter, req *http.Request) {
 		}
 	}
 }
+
+
+
 func drawGacha(w http.ResponseWriter, req *http.Request)  {
 	/**
 	input:times=2
@@ -297,6 +321,11 @@ func drawGacha(w http.ResponseWriter, req *http.Request)  {
 	    "message": "character data is fetched"
 	}
 	*/
+
+	w.Header().Set("Access-Control-Allow-Headers", "*")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+
 	if req.Method == http.MethodGet{
 		db, err := openDb()
 		if err != nil {
@@ -334,12 +363,17 @@ func drawGacha(w http.ResponseWriter, req *http.Request)  {
 			}
 			w.Header().Set("content-Type", "application/json")
 			_, err = fmt.Fprint(w, string(outjson))
+			fmt.Println("success to gacha"+drawTimes)
 			return err
 		}()
 	}
 }
 
 func getCharacterList(w http.ResponseWriter,res *http.Request)  {
+	w.Header().Set("Access-Control-Allow-Headers", "*")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+
 	if res.Method == http.MethodGet {
 		db,err := openDb()
 		if err != nil {
