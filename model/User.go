@@ -2,7 +2,7 @@ package model
 
 type User struct {
 	ID         int64
-	Name   string
+	Name       string
 	Firstname  string
 	Lastname   string
 	Email      string
@@ -12,5 +12,3 @@ type User struct {
 	XToken     string
 	//Character []Character
 }
-
-
