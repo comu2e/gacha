@@ -43,11 +43,11 @@ func getUser(w http.ResponseWriter, req *http.Request)  {
 	for rows.Next() {
 		var user model.User
 
-		err = rows.Scan(&user.Id,&user.Username,
+		err = rows.Scan(&user.ID,&user.Name,
 			 			 &user.Firstname,&user.Lastname,
 			 			 &user.Email,&user.Password,
 			 			 &user.Phone,&user.UserStatus)
-		fmt.Println(user.Id, user.Username)
+		fmt.Println(user.ID, user.Name)
 		output := map[string]interface{}{
 			//Todo id = 2で得られるが、id=2aとしても得られるので修正する。
 			//Todo error のときのjsonも準備する。
@@ -311,11 +311,11 @@ func drawGacha(w http.ResponseWriter, req *http.Request)  {
 	    "data": [
 	        {
 	            "Id": 2,
-	            "CharacterName": "character"
+	            "Name": "character"
 	        },
 	        {
 	            "Id": 12,
-	            "CharacterName": "3333"
+	            "Name": "3333"
 	        }
 	    ],
 	    "message": "character data is fetched"
@@ -341,7 +341,7 @@ func drawGacha(w http.ResponseWriter, req *http.Request)  {
 
 		drawTimes := queryMap["times"][0]
 
-		rows, err := db.Query("SELECT CharacterName,id FROM characters ORDER BY RAND() LIMIT ?",drawTimes)
+		rows, err := db.Query("SELECT name,id FROM characters ORDER BY RAND() LIMIT ?",drawTimes)
 		if err != nil {
 			return
 		}
@@ -349,7 +349,7 @@ func drawGacha(w http.ResponseWriter, req *http.Request)  {
 		characters := []model.Character{}
 		for rows.Next() {
 			var character model.Character
-			err = rows.Scan(&character.CharacterName, &character.Id)
+			err = rows.Scan(&character.Name, &character.ID)
 			characters = append(characters,character)
 		}
 		output := map[string]interface{}{
@@ -391,7 +391,7 @@ func getCharacterList(w http.ResponseWriter,res *http.Request)  {
 		characters := []model.Character{}
 		for rows.Next() {
 			var character model.Character
-			err = rows.Scan(&character.Id)
+			err = rows.Scan(&character.ID)
 			characters = append(characters,character)
 		}
 		output := map[string]interface{}{
