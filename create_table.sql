@@ -2,8 +2,7 @@
 CREATE TABLE  characters
 (
     name VARCHAR(100) NULL UNIQUE ,
-    id  INT
-                      NOT NULL
+    id  INT NOT NULL
         PRIMARY KEY
 );
 
@@ -24,13 +23,12 @@ CREATE TABLE  users
 );
 
 CREATE TABLE user_character (
-                                id INT  PRIMARY KEY NOT NULL,
-                                user_id
-                                   INT NOT NULL,
-                                FOREIGN KEY (id)
-                                    REFERENCES users(id) ,
-                                character_id
-                                   INT NOT NULL,
-                                FOREIGN KEY (id)
-                                    REFERENCES characters(id)
+      id INT  PRIMARY KEY NOT NULL,
+      user_id INT NOT NULL,
+      FOREIGN KEY (id)
+      REFERENCES users(id) ,
+      character_id
+      INT NOT NULL,
+      FOREIGN KEY (id)
+      REFERENCES characters(id)
 );
