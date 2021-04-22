@@ -15,10 +15,10 @@ import (
 
 func openDb() (*sql.DB, error) {
 	db, err := sql.Open("mysql", "root:password@/testdb")
-	return db,err
+	return db, err
 }
 
-func getUser(w http.ResponseWriter, req *http.Request)  {
+func getUser(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Access-Control-Allow-Headers", "*")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
@@ -26,14 +26,14 @@ func getUser(w http.ResponseWriter, req *http.Request)  {
 	db := database.DbConn()
 
 	queryMap := req.URL.Query()
-	if queryMap ==nil {
+	if queryMap == nil {
 		return
 	}
 	id := queryMap["id"][0]
 	fmt.Println(id)
 
-	rows,err := db.Query("SELECT * FROM users where id = ?",id)
-	if err != nil{
+	rows, err := db.Query("SELECT * FROM users where id = ?", id)
+	if err != nil {
 		return
 	}
 	//TODO userの情報を取得する
@@ -41,23 +41,23 @@ func getUser(w http.ResponseWriter, req *http.Request)  {
 	for rows.Next() {
 		var user model.User
 
-		err = rows.Scan(&user.ID,&user.Name,
-			 			 &user.Firstname,&user.Lastname,
-			 			 &user.Email,&user.Password,
-			 			 &user.Phone,&user.UserStatus)
+		err = rows.Scan(&user.ID, &user.Name,
+			&user.Firstname, &user.Lastname,
+			&user.Email, &user.Password,
+			&user.Phone, &user.UserStatus)
 		fmt.Println(user.ID, user.Name)
 		output := map[string]interface{}{
 			//Todo id = 2で得られるが、id=2aとしても得られるので修正する。
 			//Todo error のときのjsonも準備する。
-			"data":user,
-			"message":"user data is fetched",
+			"data":    user,
+			"message": "user data is fetched",
 		}
-		defer func() error{
-			outjson ,err := json.Marshal(output)
+		defer func() error {
+			outjson, err := json.Marshal(output)
 			if err != nil {
-				return	err
+				return err
 			}
-			w.Header().Set("content-Type","application/json")
+			w.Header().Set("content-Type", "application/json")
 			_, err = fmt.Fprint(w, string(outjson))
 			return err
 		}()
@@ -67,8 +67,7 @@ func getUser(w http.ResponseWriter, req *http.Request)  {
 	return
 }
 
-
-func createUser(w http.ResponseWriter,req *http.Request) {
+func createUser(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Access-Control-Allow-Headers", "*")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
@@ -97,7 +96,7 @@ func createUser(w http.ResponseWriter,req *http.Request) {
 				return
 			}
 
-			valueQuery  := ""
+			valueQuery := ""
 			columnQuery := ""
 			for k, v := range queryMap {
 				if k == "Username" {
@@ -111,8 +110,8 @@ func createUser(w http.ResponseWriter,req *http.Request) {
 						fmt.Println(hasUserCreated)
 
 						if hasUserCreated != 0 {
-							 //userがunique出ないときにjsonでstatus:falseを返す
-							 //fmt.Fprint("This username is not unique")
+							//userがunique出ないときにjsonでstatus:falseを返す
+							//fmt.Fprint("This username is not unique")
 							panic(err)
 						}
 
@@ -123,53 +122,52 @@ func createUser(w http.ResponseWriter,req *http.Request) {
 				columnQuery += k + ","
 			}
 
+			valueQuery += strconv.Itoa(id+1) + ","
+			columnQuery += "id" + ","
 
-				valueQuery  += strconv.Itoa(id+1) + ","
-				columnQuery += "id" + ","
+			xToken := randomString(20)
+			valueQuery += "\"" + xToken + "\""
+			columnQuery += "xToken" + ","
 
-				xToken := randomString(20)
-				valueQuery += "\"" + xToken + "\""
-				columnQuery += "xToken" + ","
+			valueQuery = strings.TrimRight(valueQuery, ",")
+			columnQuery = strings.TrimRight(columnQuery, ",")
 
-				valueQuery = strings.TrimRight(valueQuery, ",")
-				columnQuery = strings.TrimRight(columnQuery, ",")
+			query := "(" + columnQuery + ") " + "VALUES (" + valueQuery + ");"
+			fmt.Println(query)
+			_, err := tx.Query("INSERT INTO users" + query)
 
-				query := "(" + columnQuery + ") " + "VALUES (" + valueQuery + ");"
-				fmt.Println(query)
-				_, err := tx.Query("INSERT INTO users" + query)
-
-				if err != nil {
-					//	//失敗したらロールバック
-					_ = tx.Rollback()
-					http.Error(w, err.Error(), 401)
-					return
-				}
-				////成功したらCommit
-				_ = tx.Commit()
-				output := map[string]interface{}{
-					"x-token": xToken,
-					"message": "The user account was successfully created.",
-					"status":  true,
-				}
-				defer func() error {
-					outjson, err := json.Marshal(output)
-					if err != nil {
-						return err
-					}
-					w.Header().Set("content-Type", "application/json")
-					_, err = fmt.Fprint(w, string(outjson))
-					return err
-				}()
+			if err != nil {
+				//	//失敗したらロールバック
+				_ = tx.Rollback()
+				http.Error(w, err.Error(), 401)
+				return
 			}
+			////成功したらCommit
+			_ = tx.Commit()
+			output := map[string]interface{}{
+				"x-token": xToken,
+				"message": "The user account was successfully created.",
+				"status":  true,
+			}
+			defer func() error {
+				outjson, err := json.Marshal(output)
+				if err != nil {
+					return err
+				}
+				w.Header().Set("content-Type", "application/json")
+				_, err = fmt.Fprint(w, string(outjson))
+				return err
+			}()
+		}
 	}
 }
 
-func fetchXtoken(w http.ResponseWriter,req *http.Request)  {
+func fetchXtoken(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Access-Control-Allow-Headers", "*")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 
-	if req.Method ==  http.MethodGet {
+	if req.Method == http.MethodGet {
 
 		queryMap := req.URL.Query()
 		if queryMap == nil {
@@ -191,17 +189,17 @@ func fetchXtoken(w http.ResponseWriter,req *http.Request)  {
 
 			fmt.Println(user.XToken)
 			output := map[string]interface{}{
-				"data":user.XToken,
-				"status":true,
-				"message":"user data is fetched",
+				"data":    user.XToken,
+				"status":  true,
+				"message": "user data is fetched",
 			}
 			fmt.Println(output)
-			defer func() error{
-				outjson ,err := json.Marshal(output)
+			defer func() error {
+				outjson, err := json.Marshal(output)
 				if err != nil {
-					return	err
+					return err
 				}
-				w.Header().Set("content-Type","application/json")
+				w.Header().Set("content-Type", "application/json")
 				_, err = fmt.Fprint(w, string(outjson))
 				return err
 			}()
@@ -220,26 +218,26 @@ func randomString(n int) string {
 	return string(b)
 }
 
-func updateUser(w http.ResponseWriter,req *http.Request) {
+func updateUser(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Access-Control-Allow-Headers", "*")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 
-	if  req.Method == http.MethodPut{
+	if req.Method == http.MethodPut {
 		db := database.DbConn()
 
 		//transactionの開始
-		tx,err := db.Begin()
+		tx, err := db.Begin()
 		//auto incrementで追加
 		queryMap := req.URL.Query()
-		if queryMap ==nil {
+		if queryMap == nil {
 			return
 		}
 		id := queryMap["id"][0]
 		setQuery := ""
-		for k,v := range queryMap{
-			if k != "id"{
-				setQuery += k + " = \"" + v[0] +"\"" +  ","
+		for k, v := range queryMap {
+			if k != "id" {
+				setQuery += k + " = \"" + v[0] + "\"" + ","
 			}
 		}
 		setQuery = strings.TrimRight(setQuery, ",")
@@ -264,31 +262,28 @@ func deleteUser(w http.ResponseWriter, req *http.Request) {
 
 	if req.Method == http.MethodDelete {
 		db := database.DbConn()
-		tx,_ := db.Begin()
+		tx, _ := db.Begin()
 
 		queryMap := req.URL.Query()
 
 		deleteUserId := queryMap["user_id"][0]
 		_, errDel := tx.Query("DELETE FROM users where id = ?", deleteUserId)
-		if errDel != nil{
+		if errDel != nil {
 			_ = tx.Rollback()
 		}
 		_ = tx.Commit()
 	}
 
-
 }
 func headers(w http.ResponseWriter, req *http.Request) {
-	for name,headers := range req.Header{
-		for _,h := range headers{
+	for name, headers := range req.Header {
+		for _, h := range headers {
 			_, _ = fmt.Fprintf(w, "%v : %v\n", name, h)
 		}
 	}
 }
 
-
-
-func drawGacha(w http.ResponseWriter, req *http.Request)  {
+func drawGacha(w http.ResponseWriter, req *http.Request) {
 	/**
 	input:times=2
 	return
@@ -311,7 +306,7 @@ func drawGacha(w http.ResponseWriter, req *http.Request)  {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 
-	if req.Method == http.MethodGet{
+	if req.Method == http.MethodGet {
 		db, err := openDb()
 		if err != nil {
 			http.Error(w, err.Error(), 401)
@@ -320,13 +315,13 @@ func drawGacha(w http.ResponseWriter, req *http.Request)  {
 		defer db.Close()
 
 		queryMap := req.URL.Query()
-		if queryMap ==nil {
+		if queryMap == nil {
 			return
 		}
 
 		drawTimes := queryMap["times"][0]
 
-		rows, err := db.Query("SELECT name,id FROM characters ORDER BY RAND() LIMIT ?",drawTimes)
+		rows, err := db.Query("SELECT name,id FROM characters ORDER BY RAND() LIMIT ?", drawTimes)
 		if err != nil {
 			return
 		}
@@ -335,7 +330,7 @@ func drawGacha(w http.ResponseWriter, req *http.Request)  {
 		for rows.Next() {
 			var character model.Character
 			err = rows.Scan(&character.Name, &character.ID)
-			characters = append(characters,character)
+			characters = append(characters, character)
 		}
 		output := map[string]interface{}{
 			"data":    characters,
@@ -348,13 +343,13 @@ func drawGacha(w http.ResponseWriter, req *http.Request)  {
 			}
 			w.Header().Set("content-Type", "application/json")
 			_, err = fmt.Fprint(w, string(outjson))
-			fmt.Println("success to gacha"+drawTimes)
+			fmt.Println("success to gacha" + drawTimes)
 			return err
 		}()
 	}
 }
 
-func getCharacterList(w http.ResponseWriter,res *http.Request)  {
+func getCharacterList(w http.ResponseWriter, res *http.Request) {
 	w.Header().Set("Access-Control-Allow-Headers", "*")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
@@ -365,11 +360,11 @@ func getCharacterList(w http.ResponseWriter,res *http.Request)  {
 
 		defer db.Close()
 		queryMap := res.URL.Query()
-		if queryMap == nil{
+		if queryMap == nil {
 			return
 		}
 		user_id := queryMap["user_id"][0]
-		rows, err := db.Query("SELECT character_id FROM user_character where user_id = ?",user_id)
+		rows, err := db.Query("SELECT character_id FROM user_character where user_id = ?", user_id)
 		if err != nil {
 			panic(err)
 		}
@@ -377,7 +372,7 @@ func getCharacterList(w http.ResponseWriter,res *http.Request)  {
 		for rows.Next() {
 			var character model.Character
 			err = rows.Scan(&character.ID)
-			characters = append(characters,character)
+			characters = append(characters, character)
 		}
 		output := map[string]interface{}{
 			"data":    characters,
@@ -410,6 +405,6 @@ func main() {
 	http.HandleFunc("/user/delete/", deleteUser)
 	http.HandleFunc("/gacha/draw/", drawGacha)
 	http.HandleFunc("/character/list/", getCharacterList)
-	http.HandleFunc("/headers",headers)
+	http.HandleFunc("/headers", headers)
 	_ = http.ListenAndServe(":8090", nil)
 }

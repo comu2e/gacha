@@ -1,27 +1,36 @@
-CREATE TABLE user_character (
-    id int primary key not null,
-    user_id int not null  FOREIGN KEY id references user ,
-    character_id int not null FOREIGN KEY id references character
-);
 
 CREATE TABLE  characters
 (
-    name varchar(100) null,
-    id            int          not null
-        primary key
+    name VARCHAR(100) NULL UNIQUE ,
+    id  INT
+                      NOT NULL
+        PRIMARY KEY
 );
 
 CREATE TABLE  users
 (
-    id         int          not null
-        primary key,
-    Username   text         not null,
-    FirstName  varchar(100) null,
-    LastName   varchar(100) null,
-    Email      varchar(100) not null,
-    Password   varchar(100) not null,
-    Phone      varchar(11)  null,
-    UserStatus tinyint(1)   not null,
-    xToken     varchar(20)  not null
+    id  INT NOT NULL
+        PRIMARY KEY,
+    name   TEXT NOT NULL ,
+    FirstName  VARCHAR(100) NULL,
+    LastName   VARCHAR(100) NULL,
+    Email      VARCHAR(100) NOT NULL,
+    Password   VARCHAR(100) NOT NULL,
+    Phone      VARCHAR(11)  NULL,
+    UserStatus TINYINT(1)
+                            NOT NULL,
+    xToken     VARCHAR(20)
+                            NOT NULL
 );
 
+CREATE TABLE user_character (
+                                id INT  PRIMARY KEY NOT NULL,
+                                user_id
+                                   INT NOT NULL,
+                                FOREIGN KEY (id)
+                                    REFERENCES users(id) ,
+                                character_id
+                                   INT NOT NULL,
+                                FOREIGN KEY (id)
+                                    REFERENCES characters(id)
+);
