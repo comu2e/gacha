@@ -1,6 +1,7 @@
 package main
 
 import (
+	"Gacha/database"
 	"Gacha/model"
 	"database/sql"
 	"encoding/json"
@@ -22,11 +23,8 @@ func getUser(w http.ResponseWriter, req *http.Request)  {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 
-	db,err := openDb()
-	if err != nil {
-		return
-	}
-	defer db.Close()
+	db := database.DbConn()
+
 	queryMap := req.URL.Query()
 	if queryMap ==nil {
 		return
@@ -76,11 +74,7 @@ func createUser(w http.ResponseWriter,req *http.Request) {
 	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 
 	if req.Method == http.MethodPost {
-		db, err := openDb()
-		if err != nil {
-			return
-		}
-		defer db.Close()
+		db := database.DbConn()
 
 		//transactionの開始
 		tx, _ := db.Begin()
@@ -187,9 +181,8 @@ func fetchXtoken(w http.ResponseWriter,req *http.Request)  {
 		querySQL := fmt.Sprintf("SELECT xToken from users where Username = \"%s\" and Password = \"%s\" LIMIT 1", userName, passWord)
 
 		fmt.Println(querySQL)
-		db, _ := openDb()
+		db := database.DbConn()
 		rows, _ := db.Query(querySQL)
-		defer db.Close()
 
 		for rows.Next() {
 			var user model.User
@@ -233,11 +226,8 @@ func updateUser(w http.ResponseWriter,req *http.Request) {
 	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 
 	if  req.Method == http.MethodPut{
-		db,err := openDb()
-		if err != nil {
-			return
-		}
-		defer db.Close()
+		db := database.DbConn()
+
 		//transactionの開始
 		tx,err := db.Begin()
 		//auto incrementで追加
@@ -273,12 +263,7 @@ func deleteUser(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 
 	if req.Method == http.MethodDelete {
-
-		db,err := openDb()
-		if err != nil{
-			return
-		}
-		defer db.Close()
+		db := database.DbConn()
 		tx,_ := db.Begin()
 
 		queryMap := req.URL.Query()
@@ -375,10 +360,8 @@ func getCharacterList(w http.ResponseWriter,res *http.Request)  {
 	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 
 	if res.Method == http.MethodGet {
-		db,err := openDb()
-		if err != nil {
-			return
-		}
+
+		db := database.DbConn()
 
 		defer db.Close()
 		queryMap := res.URL.Query()
@@ -387,7 +370,9 @@ func getCharacterList(w http.ResponseWriter,res *http.Request)  {
 		}
 		user_id := queryMap["user_id"][0]
 		rows, err := db.Query("SELECT character_id FROM user_character where user_id = ?",user_id)
-
+		if err != nil {
+			panic(err)
+		}
 		characters := []model.Character{}
 		for rows.Next() {
 			var character model.Character
@@ -411,6 +396,11 @@ func getCharacterList(w http.ResponseWriter,res *http.Request)  {
 }
 
 func main() {
+	_, err := database.DbInit()
+	if err != nil {
+		panic(err)
+	}
+	defer database.DbClose()
 
 	fmt.Println("successfully connected")
 	http.HandleFunc("/user/get/", getUser)
