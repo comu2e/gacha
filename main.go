@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
+	"log"
 	"math/rand"
 	"net/http"
 	"strconv"
@@ -283,7 +284,7 @@ func headers(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func drawGacha(w http.ResponseWriter, req *http.Request) {
+func drawGacha(w http.ResponseWriter,req *http.Request) {
 	/**
 	input:times=2
 	return
@@ -343,7 +344,7 @@ func drawGacha(w http.ResponseWriter, req *http.Request) {
 			}
 			w.Header().Set("content-Type", "application/json")
 			_, err = fmt.Fprint(w, string(outjson))
-			fmt.Println("success to gacha" + drawTimes)
+			fmt.Println("success to gacha" + drawTimes + "times")
 			return err
 		}()
 	}
@@ -391,6 +392,7 @@ func getCharacterList(w http.ResponseWriter, res *http.Request) {
 }
 
 func main() {
+	//connection pool
 	_, err := database.DbInit()
 	if err != nil {
 		panic(err)
@@ -406,5 +408,8 @@ func main() {
 	http.HandleFunc("/gacha/draw/", drawGacha)
 	http.HandleFunc("/character/list/", getCharacterList)
 	http.HandleFunc("/headers", headers)
-	_ = http.ListenAndServe(":8090", nil)
+	if err := http.ListenAndServe(":8090", nil); err !=nil{
+		log.Fatal(err)
+	}
+
 }
