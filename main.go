@@ -284,7 +284,7 @@ func headers(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func drawGacha(w http.ResponseWriter, req *http.Request) {
+func drawGacha(w http.ResponseWriter,req *http.Request) {
 	/**
 	input:times=2
 	return
@@ -344,7 +344,7 @@ func drawGacha(w http.ResponseWriter, req *http.Request) {
 			}
 			w.Header().Set("content-Type", "application/json")
 			_, err = fmt.Fprint(w, string(outjson))
-			fmt.Println("success to gacha" + drawTimes)
+			fmt.Println("success to gacha" + drawTimes + "times")
 			return err
 		}()
 	}
