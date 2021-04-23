@@ -12,19 +12,18 @@ import (
 	"testing"
 )
 
-// 本来の処理のダミーその1
 
 
 
-func TestMyHandler(t *testing.T) {
+func TestFetchGacha(t *testing.T) {
 	tt := []struct {
 	times         string
-	expect_times string
+	expectTimes string
 }{
-		{times:"1",expect_times:"1"},
-		{times:"2",expect_times:"2"},
+		{times:"1",expectTimes:"1"},
+		{times:"2",expectTimes:"2"},
 		//キャラクターが2つ登録されているときは2.登録数の上限が期待する値
-		{times:"100",expect_times:"2"},
+		{times:"100",expectTimes:"2"},
 	}
 
 	for _ , tc := range tt{
@@ -54,13 +53,9 @@ func TestMyHandler(t *testing.T) {
 		arr := gacha["data"].([]interface{})
 
 		assert.Equal(t,
-			tc.expect_times,
+			tc.expectTimes,
 			strconv.Itoa(len(arr)),
 			"Fetched Gacha data count is "+tc.times,
 		)
-
-
 	}
-
-
 }
