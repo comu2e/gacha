@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
+	"log"
 	"math/rand"
 	"net/http"
 	"strconv"
@@ -391,6 +392,7 @@ func getCharacterList(w http.ResponseWriter, res *http.Request) {
 }
 
 func main() {
+	//connection pool
 	_, err := database.DbInit()
 	if err != nil {
 		panic(err)
@@ -406,5 +408,8 @@ func main() {
 	http.HandleFunc("/gacha/draw/", drawGacha)
 	http.HandleFunc("/character/list/", getCharacterList)
 	http.HandleFunc("/headers", headers)
-	_ = http.ListenAndServe(":8090", nil)
+	if err := http.ListenAndServe(":8090", nil); err !=nil{
+		log.Fatal(err)
+	}
+
 }
