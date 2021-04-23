@@ -24,7 +24,13 @@ func getUser(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 
-	db := database.DbConn()
+	//db := database.DbConn()
+	db, err := openDb()
+	if err != nil {
+		http.Error(w, err.Error(), 401)
+		return
+	}
+	defer db.Close()
 
 	queryMap := req.URL.Query()
 	if queryMap == nil {
@@ -33,9 +39,9 @@ func getUser(w http.ResponseWriter, req *http.Request) {
 	id := queryMap["id"][0]
 	fmt.Println(id)
 
-	rows, err := db.Query("SELECT * FROM users where id = ?", id)
+	rows, err := db.Query("SELECT * FROM users WHERE id = "+id)
 	if err != nil {
-		return
+		panic(err)
 	}
 	//TODO userの情報を取得する
 	//TODO jsonに出力する。
@@ -45,8 +51,7 @@ func getUser(w http.ResponseWriter, req *http.Request) {
 		err = rows.Scan(&user.ID, &user.Name,
 			&user.Firstname, &user.Lastname,
 			&user.Email, &user.Password,
-			&user.Phone, &user.UserStatus)
-		fmt.Println(user.ID, user.Name)
+			&user.Phone, &user.UserStatus,&user.XToken)
 		output := map[string]interface{}{
 			//Todo id = 2で得られるが、id=2aとしても得られるので修正する。
 			//Todo error のときのjsonも準備する。
@@ -103,7 +108,7 @@ func createUser(w http.ResponseWriter, req *http.Request) {
 				if k == "Username" {
 					queryUsername := v[0]
 
-					rowsCount, _ := db.Query("SELECT count(Username) as hasUserCreated  from users where username = ?", queryUsername)
+					rowsCount, _ := db.Query("SELECT count(Name) as hasUserCreated  from users where Name = ?", queryUsername)
 
 					for rowsCount.Next() {
 						var hasUserCreated int
@@ -174,10 +179,10 @@ func fetchXtoken(w http.ResponseWriter, req *http.Request) {
 		if queryMap == nil {
 			return
 		}
-		userName := queryMap["Username"][0]
+		userName := queryMap["Name"][0]
 		passWord := queryMap["Password"][0]
 
-		querySQL := fmt.Sprintf("SELECT xToken from users where Username = \"%s\" and Password = \"%s\" LIMIT 1", userName, passWord)
+		querySQL := fmt.Sprintf("SELECT xToken from users where Name = \"%s\" and Password = \"%s\" LIMIT 1", userName, passWord)
 
 		fmt.Println(querySQL)
 		db := database.DbConn()
@@ -285,23 +290,6 @@ func headers(w http.ResponseWriter, req *http.Request) {
 }
 
 func drawGacha(w http.ResponseWriter,req *http.Request) {
-	/**
-	input:times=2
-	return
-	{
-	    "data": [
-	        {
-	            "Id": 2,
-	            "Name": "character"
-	        },
-	        {
-	            "Id": 12,
-	            "Name": "3333"
-	        }
-	    ],
-	    "message": "character data is fetched"
-	}
-	*/
 
 	w.Header().Set("Access-Control-Allow-Headers", "*")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
