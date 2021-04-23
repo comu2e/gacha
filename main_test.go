@@ -17,9 +17,15 @@ import (
 
 
 func TestMyHandler(t *testing.T) {
-	tt := []struct{
- 	times string
-	}{{times:"1"},{times:"2"},{times:"100"}}
+	tt := []struct {
+	times         string
+	expect_times string
+}{
+		{times:"1",expect_times:"1"},
+		{times:"2",expect_times:"2"},
+		//キャラクターが2つ登録されているときは2.登録数の上限が期待する値
+		{times:"100",expect_times:"2"},
+	}
 
 	for _ , tc := range tt{
 		req,err := http.NewRequest("GET","localhost:8090/gacha/draw/?times="+tc.times,nil)
@@ -40,8 +46,6 @@ func TestMyHandler(t *testing.T) {
 
 		_, err = strconv.Atoi(string((bytes.TrimSpace(data))))
 
-		//var character model.Character
-
 		gacha :=  make(map[string]interface{})
 
 		if err := json.Unmarshal(data, &gacha); err != nil {
@@ -49,7 +53,12 @@ func TestMyHandler(t *testing.T) {
 		}
 		arr := gacha["data"].([]interface{})
 
-		assert.Equal(t, tc.times,strconv.Itoa(len(arr)),"Fetched Gacha data count is "+tc.times )
+		assert.Equal(t,
+			tc.expect_times,
+			strconv.Itoa(len(arr)),
+			"Fetched Gacha data count is "+tc.times,
+		)
+
 
 	}
 
