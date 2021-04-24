@@ -1,6 +1,7 @@
 package main
 
 import (
+	"Gacha/model"
 	"bytes"
 	"encoding/json"
 	"github.com/stretchr/testify/assert"
@@ -12,26 +13,80 @@ import (
 	"testing"
 )
 
-// 本来の処理のダミーその1
-
-
-
-func TestMyHandler(t *testing.T) {
-	tt := []struct {
-	times         string
-	expect_times string
-}{
-		{times:"1",expect_times:"1"},
-		{times:"2",expect_times:"2"},
-		//キャラクターが2つ登録されているときは2.登録数の上限が期待する値
-		{times:"100",expect_times:"2"},
+func TestGetUser(t *testing.T)  {
+	tt := []struct{
+		getXToken string
+		wantXToken string
+		wantUserID int64
+	}{
+		{getXToken: "BpLnfgDsc2WD8F2qNfHK",wantXToken:"BpLnfgDsc2WD8F2qNfHK",wantUserID:1},
+		{getXToken: "5a84jjJkwzDkh9h2fhfU",wantXToken:"5a84jjJkwzDkh9h2fhfU",wantUserID:2},
+		{getXToken: "notexistXtoken",wantXToken:"",wantUserID:0},
 	}
 
 	for _ , tc := range tt{
-		req,err := http.NewRequest("GET","localhost:8090/gacha/draw/?times="+tc.times,nil)
+		//arrange
+		url :=  "localhost:8090/user/get/"
+		req,err := http.NewRequest("GET",url,nil)
+		//xtokenを設定
+		req.Header.Set("xToken",tc.getXToken)
+
 		if err != nil{
 			t.Fatalf("could not create request %v",err)
 		}
+
+		//act
+		rec := httptest.NewRecorder()
+		getUser(rec,req)
+
+		res := rec.Result()
+		defer res.Body.Close()
+
+		if res.StatusCode != http.StatusOK {
+			t.Errorf("Expected status OK:got %v",res.Status)
+		}
+		data, err := ioutil.ReadAll(rec.Body)
+
+		_, err = strconv.Atoi(string(bytes.TrimSpace(data)))
+
+		var userJson model.UserJson
+		if err := json.Unmarshal(data, &userJson); err != nil {
+			log.Fatal(err)
+		}
+		//assertion
+		assert.Equal(t,
+			tc.wantUserID,
+			userJson.Data.ID,
+			"Fetched UserID is %v ",userJson.Data.ID,
+		)
+
+	}
+
+}
+
+func TestFetchGacha(t *testing.T) {
+
+	tt := []struct{
+		getXToken string
+		wantXToken string
+		getTimes     string
+		expectTimes string
+	}{
+		{getXToken: "BpLnfgDsc2WD8F2qNfHK",wantXToken:"BpLnfgDsc2WD8F2qNfHK",getTimes:"1" ,expectTimes:"1"},
+		{getXToken: "BpLnfgDsc2WD8F2qNfHK",wantXToken:"BpLnfgDsc2WD8F2qNfHK",getTimes:"2" ,expectTimes:"2"},
+		{getXToken: "5a84jjJkwzDkh9h2fhfU",wantXToken:"5a84jjJkwzDkh9h2fhfU",getTimes:"1" ,expectTimes:"1"},
+		{getXToken: "5a84jjJkwzDkh9h2fhfU",wantXToken:"5a84jjJkwzDkh9h2fhfU",getTimes:"2" ,expectTimes:"2"},
+		{getXToken: "5a84jjJkwzDkh9h2fhfU",wantXToken:"5a84jjJkwzDkh9h2fhfU",getTimes:"100" ,expectTimes:"2"},
+		//{getXToken: "notexistXtoken",wantXToken:"",getTimes:"100" ,expectTimes:"0"},
+
+	}
+
+	for _ , tc := range tt{
+		req,err := http.NewRequest("GET","localhost:8090/gacha/draw/?times="+tc.getTimes,nil)
+		if err != nil{
+			t.Fatalf("could not create request %v",err)
+		}
+		req.Header.Set("xToken",tc.getXToken)
 
 		rec := httptest.NewRecorder()
 		drawGacha(rec,req)
@@ -54,13 +109,9 @@ func TestMyHandler(t *testing.T) {
 		arr := gacha["data"].([]interface{})
 
 		assert.Equal(t,
-			tc.expect_times,
+			tc.expectTimes,
 			strconv.Itoa(len(arr)),
-			"Fetched Gacha data count is "+tc.times,
+			"Fetched Gacha data count is "+tc.getTimes,
 		)
-
-
 	}
-
-
 }

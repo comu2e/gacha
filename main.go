@@ -19,39 +19,89 @@ func openDb() (*sql.DB, error) {
 	return db, err
 }
 
-func getUser(w http.ResponseWriter, req *http.Request) {
+func setHeader(w http.ResponseWriter,method string)http.ResponseWriter  {
 	w.Header().Set("Access-Control-Allow-Headers", "*")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Methods", method)
+	return w
+}
 
-	db := database.DbConn()
+func getUser(w http.ResponseWriter, req *http.Request) {
+	defer setHeader(w,"GET")
+
+	xToken := req.Header.Get("xToken")
+	db, err := openDb()
+	if err != nil {
+		http.Error(w, err.Error(), 401)
+		return
+	}
+	defer db.Close()
 
 	queryMap := req.URL.Query()
 	if queryMap == nil {
 		return
 	}
-	id := queryMap["id"][0]
-	fmt.Println(id)
+	row_count,err := db.Query("SELECT COUNT(id) as userCount FROM users WHERE xToken=?",xToken)
 
-	rows, err := db.Query("SELECT * FROM users where id = ?", id)
-	if err != nil {
-		return
+	type userCount struct {
+		count int
 	}
-	//TODO userの情報を取得する
-	//TODO jsonに出力する。
-	for rows.Next() {
-		var user model.User
 
-		err = rows.Scan(&user.ID, &user.Name,
-			&user.Firstname, &user.Lastname,
-			&user.Email, &user.Password,
-			&user.Phone, &user.UserStatus)
-		fmt.Println(user.ID, user.Name)
+	if err != nil {
+		panic(err)
+	}
+
+	var dbCount userCount
+
+	for row_count.Next() {
+		err = row_count.Scan(&dbCount.count)
+	}
+
+	if dbCount.count != 0 {
+		rows, err := db.Query("SELECT * FROM users WHERE xToken=?",xToken)
+		if err != nil {
+			panic(err)
+		}
+
+		for rows.Next() {
+
+			var user model.User
+			err = rows.Scan(&user.ID, &user.Name,
+				&user.Firstname, &user.Lastname,
+				&user.Email, &user.Password,
+				&user.Phone, &user.UserStatus,&user.XToken)
+
+
+			output := map[string]interface{}{
+				"data":    user,
+				"message": "user data is fetched",
+			}
+			defer func() error {
+				outjson, err := json.Marshal(output)
+				if err != nil {
+					return err
+				}
+				w.Header().Set("content-Type", "application/json")
+				_, err = fmt.Fprint(w, string(outjson))
+				return err
+			}()
+
+		}
+
+	}else{
 		output := map[string]interface{}{
-			//Todo id = 2で得られるが、id=2aとしても得られるので修正する。
-			//Todo error のときのjsonも準備する。
-			"data":    user,
-			"message": "user data is fetched",
+			"data": model.User{
+				ID:         0,
+				Name:       "",
+				Firstname:  "",
+				Lastname:   "",
+				Email:      "",
+				Password:   "",
+				Phone:      "",
+				UserStatus: false,
+				XToken:     "",
+			},
+			"message": "user is not exist.",
 		}
 		defer func() error {
 			outjson, err := json.Marshal(output)
@@ -62,16 +112,13 @@ func getUser(w http.ResponseWriter, req *http.Request) {
 			_, err = fmt.Fprint(w, string(outjson))
 			return err
 		}()
-
 	}
 
 	return
 }
 
 func createUser(w http.ResponseWriter, req *http.Request) {
-	w.Header().Set("Access-Control-Allow-Headers", "*")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+	defer setHeader(w,"POST")
 
 	if req.Method == http.MethodPost {
 		db := database.DbConn()
@@ -103,21 +150,17 @@ func createUser(w http.ResponseWriter, req *http.Request) {
 				if k == "Username" {
 					queryUsername := v[0]
 
-					rowsCount, _ := db.Query("SELECT count(Username) as hasUserCreated  from users where username = ?", queryUsername)
+					rowsCount, _ := db.Query("SELECT count(Name) as hasUserCreated  from users where Name = ?", queryUsername)
 
 					for rowsCount.Next() {
 						var hasUserCreated int
 						err = rowsCount.Scan(&hasUserCreated)
-						fmt.Println(hasUserCreated)
 
 						if hasUserCreated != 0 {
 							//userがunique出ないときにjsonでstatus:falseを返す
-							//fmt.Fprint("This username is not unique")
 							panic(err)
 						}
-
 					}
-
 				}
 				valueQuery += "\"" + v[0] + "\"" + ","
 				columnQuery += k + ","
@@ -164,9 +207,7 @@ func createUser(w http.ResponseWriter, req *http.Request) {
 }
 
 func fetchXtoken(w http.ResponseWriter, req *http.Request) {
-	w.Header().Set("Access-Control-Allow-Headers", "*")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+	defer setHeader(w,"GET")
 
 	if req.Method == http.MethodGet {
 
@@ -174,10 +215,10 @@ func fetchXtoken(w http.ResponseWriter, req *http.Request) {
 		if queryMap == nil {
 			return
 		}
-		userName := queryMap["Username"][0]
+		userName := queryMap["Name"][0]
 		passWord := queryMap["Password"][0]
 
-		querySQL := fmt.Sprintf("SELECT xToken from users where Username = \"%s\" and Password = \"%s\" LIMIT 1", userName, passWord)
+		querySQL := fmt.Sprintf("SELECT xToken from users where Name = \"%s\" and Password = \"%s\" LIMIT 1", userName, passWord)
 
 		fmt.Println(querySQL)
 		db := database.DbConn()
@@ -220,10 +261,7 @@ func randomString(n int) string {
 }
 
 func updateUser(w http.ResponseWriter, req *http.Request) {
-	w.Header().Set("Access-Control-Allow-Headers", "*")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-
+	setHeader(w,"PUT")
 	if req.Method == http.MethodPut {
 		db := database.DbConn()
 
@@ -234,7 +272,7 @@ func updateUser(w http.ResponseWriter, req *http.Request) {
 		if queryMap == nil {
 			return
 		}
-		id := queryMap["id"][0]
+		xToken := req.Header.Get("xToken")
 		setQuery := ""
 		for k, v := range queryMap {
 			if k != "id" {
@@ -243,8 +281,8 @@ func updateUser(w http.ResponseWriter, req *http.Request) {
 		}
 		setQuery = strings.TrimRight(setQuery, ",")
 		fmt.Println(setQuery)
-		query := "UPDATE users SET " + setQuery + " WHERE id = " + id
-		fmt.Println(query)
+		query := "UPDATE users SET " + setQuery + " WHERE xToken = " + xToken
+
 		tx.Query(query)
 		if err != nil {
 			err = tx.Rollback()
@@ -257,18 +295,12 @@ func updateUser(w http.ResponseWriter, req *http.Request) {
 }
 
 func deleteUser(w http.ResponseWriter, req *http.Request) {
-	w.Header().Set("Access-Control-Allow-Headers", "*")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-
+	setHeader(w,"DELETE")
 	if req.Method == http.MethodDelete {
 		db := database.DbConn()
 		tx, _ := db.Begin()
-
-		queryMap := req.URL.Query()
-
-		deleteUserId := queryMap["user_id"][0]
-		_, errDel := tx.Query("DELETE FROM users where id = ?", deleteUserId)
+		xToken := req.Header.Get("xToken")
+		_, errDel := tx.Query("DELETE FROM users where xToken = ?", xToken)
 		if errDel != nil {
 			_ = tx.Rollback()
 		}
@@ -285,30 +317,15 @@ func headers(w http.ResponseWriter, req *http.Request) {
 }
 
 func drawGacha(w http.ResponseWriter,req *http.Request) {
-	/**
-	input:times=2
-	return
-	{
-	    "data": [
-	        {
-	            "Id": 2,
-	            "Name": "character"
-	        },
-	        {
-	            "Id": 12,
-	            "Name": "3333"
-	        }
-	    ],
-	    "message": "character data is fetched"
-	}
-	*/
 
-	w.Header().Set("Access-Control-Allow-Headers", "*")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-
+	setHeader(w,"GET")
 	if req.Method == http.MethodGet {
 		db, err := openDb()
+		//transactionの開始
+		tx, _ := db.Begin()
+
+		xToken := req.Header.Get("xToken")
+
 		if err != nil {
 			http.Error(w, err.Error(), 401)
 			return
@@ -319,20 +336,53 @@ func drawGacha(w http.ResponseWriter,req *http.Request) {
 		if queryMap == nil {
 			return
 		}
-
 		drawTimes := queryMap["times"][0]
-
-		rows, err := db.Query("SELECT name,id FROM characters ORDER BY RAND() LIMIT ?", drawTimes)
+		rows, err := tx.Query("SELECT id FROM users where xToken = ?",xToken)
 		if err != nil {
 			return
 		}
+		defer rows.Close()
+
+		var user_id string
+		for rows.Next() {
+			err = rows.Scan(&user_id)
+		}
+		fmt.Println(user_id)
+
+		//auto incrementで追加
+		rows, err = tx.Query("SELECT max(id) FROM users")
+		//usernameをユニークにするためにusernameのリストを取得する。
+		var id int
+		for rows.Next() {
+			err = rows.Scan(&id)
+		}
+		fmt.Println(id)
+
+		if err != nil {
+			http.Error(w, err.Error(), 401)
+			return
+		}
+
+		rows, err = tx.Query("SELECT name,id FROM characters ORDER BY RAND() LIMIT ?", drawTimes)
+		if err != nil {
+			return
+		}
+		defer rows.Close()
 
 		characters := []model.Character{}
+		insertQuery := ""
 		for rows.Next() {
 			var character model.Character
 			err = rows.Scan(&character.Name, &character.ID)
 			characters = append(characters, character)
+			id += 1
+			insertQuery +=
+				"INSERT INTO user_character (id,user_character_ibfk_1,user_character_ibfk_2) VALUES "+"(" + strconv.Itoa(id) + "" + ","  +""+ user_id +"," + strconv.FormatInt(character.ID,10)+")"
+			db.Query(insertQuery)
+			fmt.Println(insertQuery)
+
 		}
+
 		output := map[string]interface{}{
 			"data":    characters,
 			"message": "character data is fetched",
@@ -344,16 +394,18 @@ func drawGacha(w http.ResponseWriter,req *http.Request) {
 			}
 			w.Header().Set("content-Type", "application/json")
 			_, err = fmt.Fprint(w, string(outjson))
-			fmt.Println("success to gacha" + drawTimes + "times")
 			return err
 		}()
+
+		if err != nil {
+			tx.Rollback()
+		}
+		tx.Commit()
 	}
 }
 
 func getCharacterList(w http.ResponseWriter, res *http.Request) {
-	w.Header().Set("Access-Control-Allow-Headers", "*")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+	setHeader(w,"GET")
 
 	if res.Method == http.MethodGet {
 
@@ -399,7 +451,7 @@ func main() {
 	}
 	defer database.DbClose()
 
-	fmt.Println("successfully connected")
+	fmt.Println("successfully Launched")
 	http.HandleFunc("/user/get/", getUser)
 	http.HandleFunc("/user/fetch/", fetchXtoken)
 	http.HandleFunc("/user/create/", createUser)
