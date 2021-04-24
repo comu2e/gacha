@@ -21,7 +21,7 @@ CREATE TABLE  users
 );
 
 CREATE TABLE user_character (
-    id INT  PRIMARY KEY NOT NULL,
+    id INT NOT NULL AUTO_INCREMENT,
     user_id INT NOT NULL,
     FOREIGN KEY (id)
     REFERENCES users(id) ,

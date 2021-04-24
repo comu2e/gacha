@@ -349,15 +349,6 @@ func drawGacha(w http.ResponseWriter,req *http.Request) {
 		}
 		fmt.Println(user_id)
 
-		//auto incrementで追加
-		rows, err = tx.Query("SELECT max(id) FROM users")
-		//usernameをユニークにするためにusernameのリストを取得する。
-		var id int
-		for rows.Next() {
-			err = rows.Scan(&id)
-		}
-		fmt.Println(id)
-
 		if err != nil {
 			http.Error(w, err.Error(), 401)
 			return
@@ -375,11 +366,9 @@ func drawGacha(w http.ResponseWriter,req *http.Request) {
 			var character model.Character
 			err = rows.Scan(&character.Name, &character.ID)
 			characters = append(characters, character)
-			id += 1
 			insertQuery +=
-				"INSERT INTO user_character (id,user_character_ibfk_1,user_character_ibfk_2) VALUES "+"(" + strconv.Itoa(id) + "" + ","  +""+ user_id +"," + strconv.FormatInt(character.ID,10)+")"
+				"INSERT INTO user_character VALUES "+"(" + user_id +"," + strconv.FormatInt(character.ID,10)+")"
 			db.Query(insertQuery)
-			fmt.Println(insertQuery)
 
 		}
 
