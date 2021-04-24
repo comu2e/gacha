@@ -155,7 +155,6 @@ func createUser(w http.ResponseWriter, req *http.Request) {
 					for rowsCount.Next() {
 						var hasUserCreated int
 						err = rowsCount.Scan(&hasUserCreated)
-						fmt.Println(hasUserCreated)
 
 						if hasUserCreated != 0 {
 							//userがunique出ないときにjsonでstatus:falseを返す
@@ -262,10 +261,7 @@ func randomString(n int) string {
 }
 
 func updateUser(w http.ResponseWriter, req *http.Request) {
-	w.Header().Set("Access-Control-Allow-Headers", "*")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-
+	setHeader(w,"PUT")
 	if req.Method == http.MethodPut {
 		db := database.DbConn()
 
@@ -276,7 +272,7 @@ func updateUser(w http.ResponseWriter, req *http.Request) {
 		if queryMap == nil {
 			return
 		}
-		id := queryMap["id"][0]
+		xToken := req.Header.Get("xToken")
 		setQuery := ""
 		for k, v := range queryMap {
 			if k != "id" {
@@ -285,8 +281,8 @@ func updateUser(w http.ResponseWriter, req *http.Request) {
 		}
 		setQuery = strings.TrimRight(setQuery, ",")
 		fmt.Println(setQuery)
-		query := "UPDATE users SET " + setQuery + " WHERE id = " + id
-		fmt.Println(query)
+		query := "UPDATE users SET " + setQuery + " WHERE xToken = " + xToken
+
 		tx.Query(query)
 		if err != nil {
 			err = tx.Rollback()
