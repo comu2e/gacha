@@ -15,18 +15,22 @@ import (
 
 func TestGetUser(t *testing.T)  {
 	tt := []struct{
-		giveUserID string
+		getXToken string
+		wantXToken string
 		wantUserID int64
 	}{
-		{giveUserID: "1",wantUserID: 1},
-		{giveUserID: "2",wantUserID: 2},
-		{giveUserID: "100000",wantUserID: 0},
+		{getXToken: "BpLnfgDsc2WD8F2qNfHK",wantXToken:"BpLnfgDsc2WD8F2qNfHK",wantUserID:1},
+		{getXToken: "5a84jjJkwzDkh9h2fhfU",wantXToken:"5a84jjJkwzDkh9h2fhfU",wantUserID:2},
+		{getXToken: "notexistXtoken",wantXToken:"",wantUserID:0},
 	}
 
 	for _ , tc := range tt{
 		//arrange
-		url :=  "localhost:8090/user/get/?id="+tc.giveUserID
+		url :=  "localhost:8090/user/get/"
 		req,err := http.NewRequest("GET",url,nil)
+		//xtokenを設定
+		req.Header.Set("xToken",tc.getXToken)
+
 		if err != nil{
 			t.Fatalf("could not create request %v",err)
 		}
@@ -61,21 +65,28 @@ func TestGetUser(t *testing.T)  {
 }
 
 func TestFetchGacha(t *testing.T) {
-	tt := []struct {
-	times         string
-	expectTimes string
-}{
-		{times:"1",expectTimes:"1"},
-		{times:"2",expectTimes:"2"},
-		//キャラクターが2つ登録されているときは2.登録数の上限が期待する値
-		{times:"100",expectTimes:"2"},
+
+	tt := []struct{
+		getXToken string
+		wantXToken string
+		getTimes     string
+		expectTimes string
+	}{
+		{getXToken: "BpLnfgDsc2WD8F2qNfHK",wantXToken:"BpLnfgDsc2WD8F2qNfHK",getTimes:"1" ,expectTimes:"1"},
+		{getXToken: "BpLnfgDsc2WD8F2qNfHK",wantXToken:"BpLnfgDsc2WD8F2qNfHK",getTimes:"2" ,expectTimes:"2"},
+		{getXToken: "5a84jjJkwzDkh9h2fhfU",wantXToken:"5a84jjJkwzDkh9h2fhfU",getTimes:"1" ,expectTimes:"1"},
+		{getXToken: "5a84jjJkwzDkh9h2fhfU",wantXToken:"5a84jjJkwzDkh9h2fhfU",getTimes:"2" ,expectTimes:"2"},
+		{getXToken: "5a84jjJkwzDkh9h2fhfU",wantXToken:"5a84jjJkwzDkh9h2fhfU",getTimes:"100" ,expectTimes:"2"},
+		//{getXToken: "notexistXtoken",wantXToken:"",getTimes:"100" ,expectTimes:"0"},
+
 	}
 
 	for _ , tc := range tt{
-		req,err := http.NewRequest("GET","localhost:8090/gacha/draw/?times="+tc.times,nil)
+		req,err := http.NewRequest("GET","localhost:8090/gacha/draw/?times="+tc.getTimes,nil)
 		if err != nil{
 			t.Fatalf("could not create request %v",err)
 		}
+		req.Header.Set("xToken",tc.getXToken)
 
 		rec := httptest.NewRecorder()
 		drawGacha(rec,req)
@@ -100,7 +111,7 @@ func TestFetchGacha(t *testing.T) {
 		assert.Equal(t,
 			tc.expectTimes,
 			strconv.Itoa(len(arr)),
-			"Fetched Gacha data count is "+tc.times,
+			"Fetched Gacha data count is "+tc.getTimes,
 		)
 	}
 }

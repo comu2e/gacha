@@ -28,6 +28,8 @@ func setHeader(w http.ResponseWriter,method string)http.ResponseWriter  {
 
 func getUser(w http.ResponseWriter, req *http.Request) {
 	defer setHeader(w,"GET")
+
+	xToken := req.Header.Get("xToken")
 	db, err := openDb()
 	if err != nil {
 		http.Error(w, err.Error(), 401)
@@ -39,9 +41,7 @@ func getUser(w http.ResponseWriter, req *http.Request) {
 	if queryMap == nil {
 		return
 	}
-	id := queryMap["id"][0]
-	row_count,err := db.Query("SELECT COUNT(id) as userCount FROM users WHERE id = "+id)
-
+	row_count,err := db.Query("SELECT COUNT(id) as userCount FROM users WHERE xToken=?",xToken)
 
 	type userCount struct {
 		count int
@@ -58,7 +58,7 @@ func getUser(w http.ResponseWriter, req *http.Request) {
 	}
 
 	if dbCount.count != 0 {
-		rows, err := db.Query("SELECT * FROM users WHERE id = "+id)
+		rows, err := db.Query("SELECT * FROM users WHERE xToken=?",xToken)
 		if err != nil {
 			panic(err)
 		}
@@ -159,12 +159,9 @@ func createUser(w http.ResponseWriter, req *http.Request) {
 
 						if hasUserCreated != 0 {
 							//userがunique出ないときにjsonでstatus:falseを返す
-							//fmt.Fprint("This username is not unique")
 							panic(err)
 						}
-
 					}
-
 				}
 				valueQuery += "\"" + v[0] + "\"" + ","
 				columnQuery += k + ","
@@ -302,18 +299,12 @@ func updateUser(w http.ResponseWriter, req *http.Request) {
 }
 
 func deleteUser(w http.ResponseWriter, req *http.Request) {
-	w.Header().Set("Access-Control-Allow-Headers", "*")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-
+	setHeader(w,"DELETE")
 	if req.Method == http.MethodDelete {
 		db := database.DbConn()
 		tx, _ := db.Begin()
-
-		queryMap := req.URL.Query()
-
-		deleteUserId := queryMap["user_id"][0]
-		_, errDel := tx.Query("DELETE FROM users where id = ?", deleteUserId)
+		xToken := req.Header.Get("xToken")
+		_, errDel := tx.Query("DELETE FROM users where xToken = ?", xToken)
 		if errDel != nil {
 			_ = tx.Rollback()
 		}
@@ -369,7 +360,6 @@ func drawGacha(w http.ResponseWriter,req *http.Request) {
 			}
 			w.Header().Set("content-Type", "application/json")
 			_, err = fmt.Fprint(w, string(outjson))
-			//fmt.Println("success to gacha" + drawTimes + "times")
 			return err
 		}()
 	}
