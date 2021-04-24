@@ -321,6 +321,11 @@ func drawGacha(w http.ResponseWriter,req *http.Request) {
 	setHeader(w,"GET")
 	if req.Method == http.MethodGet {
 		db, err := openDb()
+		//transactionの開始
+		tx, _ := db.Begin()
+
+		xToken := req.Header.Get("xToken")
+
 		if err != nil {
 			http.Error(w, err.Error(), 401)
 			return
@@ -331,20 +336,53 @@ func drawGacha(w http.ResponseWriter,req *http.Request) {
 		if queryMap == nil {
 			return
 		}
-
 		drawTimes := queryMap["times"][0]
-
-		rows, err := db.Query("SELECT name,id FROM characters ORDER BY RAND() LIMIT ?", drawTimes)
+		rows, err := tx.Query("SELECT id FROM users where xToken = ?",xToken)
 		if err != nil {
 			return
 		}
+		defer rows.Close()
+
+		var user_id string
+		for rows.Next() {
+			err = rows.Scan(&user_id)
+		}
+		fmt.Println(user_id)
+
+		//auto incrementで追加
+		rows, err = tx.Query("SELECT max(id) FROM users")
+		//usernameをユニークにするためにusernameのリストを取得する。
+		var id int
+		for rows.Next() {
+			err = rows.Scan(&id)
+		}
+		fmt.Println(id)
+
+		if err != nil {
+			http.Error(w, err.Error(), 401)
+			return
+		}
+
+		rows, err = tx.Query("SELECT name,id FROM characters ORDER BY RAND() LIMIT ?", drawTimes)
+		if err != nil {
+			return
+		}
+		defer rows.Close()
 
 		characters := []model.Character{}
+		insertQuery := ""
 		for rows.Next() {
 			var character model.Character
 			err = rows.Scan(&character.Name, &character.ID)
 			characters = append(characters, character)
+			id += 1
+			insertQuery +=
+				"INSERT INTO user_character (id,user_character_ibfk_1,user_character_ibfk_2) VALUES "+"(" + strconv.Itoa(id) + "" + ","  +""+ user_id +"," + strconv.FormatInt(character.ID,10)+")"
+			db.Query(insertQuery)
+			fmt.Println(insertQuery)
+
 		}
+
 		output := map[string]interface{}{
 			"data":    characters,
 			"message": "character data is fetched",
@@ -358,6 +396,11 @@ func drawGacha(w http.ResponseWriter,req *http.Request) {
 			_, err = fmt.Fprint(w, string(outjson))
 			return err
 		}()
+
+		if err != nil {
+			tx.Rollback()
+		}
+		tx.Commit()
 	}
 }
 
@@ -408,7 +451,7 @@ func main() {
 	}
 	defer database.DbClose()
 
-	fmt.Println("successfully connected")
+	fmt.Println("successfully Launched")
 	http.HandleFunc("/user/get/", getUser)
 	http.HandleFunc("/user/fetch/", fetchXtoken)
 	http.HandleFunc("/user/create/", createUser)
