@@ -1,8 +1,10 @@
 package main
 
 import (
+	"Gacha/model"
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"log"
@@ -14,15 +16,15 @@ import (
 
 func TestGetUser(t *testing.T)  {
 	tt := []struct{
-		userID string
-		expectedUserID string
+		giveUserID string
+		wantUserID string
 	}{
-		{userID: "1",expectedUserID: "1"},
-		{userID: "2",expectedUserID: "2"},
+		{giveUserID: "1",wantUserID: "1"},
+		{giveUserID: "2",wantUserID: "2"},
 	}
 
 	for _ , tc := range tt{
-		url :=  "localhost:8090/user/get/?id="+tc.userID
+		url :=  "localhost:8090/user/get/?id="+tc.giveUserID
 		print(url+"\n")
 		req,err := http.NewRequest("GET",url,nil)
 		if err != nil{
@@ -31,29 +33,22 @@ func TestGetUser(t *testing.T)  {
 
 		rec := httptest.NewRecorder()
 		getUser(rec,req)
-	//
-	//	res := rec.Result()
-	//	defer res.Body.Close()
-	//
-	//	if res.StatusCode != http.StatusOK {
-	//		t.Errorf("Expected status OK:got %v",res.Status)
-	//	}
-	//	data, err := ioutil.ReadAll(rec.Body)
-	//
-	//	_, err = strconv.Atoi(string((bytes.TrimSpace(data))))
-	//
-	//	user :=  make(map[string]interface{})
-	//
-	//	if err := json.Unmarshal(data, &user); err != nil {
-	//		log.Fatal(err)
-	//	}
-	//	arr := user["data"].([]interface{})
-	//
-	//	assert.Equal(t,
-	//		tc.expectedUserID,
-	//		strconv.Itoa(len(arr)),
-	//		"Fetched User data count is "+tc.userID,
-	//	)
+
+		res := rec.Result()
+		defer res.Body.Close()
+
+		if res.StatusCode != http.StatusOK {
+			t.Errorf("Expected status OK:got %v",res.Status)
+		}
+		data, err := ioutil.ReadAll(rec.Body)
+
+		_, err = strconv.Atoi(string(bytes.TrimSpace(data)))
+
+		var userJson model.UserJson
+		if err := json.Unmarshal(data, &userJson); err != nil {
+			log.Fatal(err)
+		}
+		fmt.Println(userJson.Data.XToken)
 	}
 
 }
