@@ -23,10 +23,10 @@ CREATE TABLE  users
 CREATE TABLE user_character (
     id INT NOT NULL AUTO_INCREMENT,
     user_id INT NOT NULL,
-    FOREIGN KEY (id)
+    FOREIGN KEY (user_id)
     REFERENCES users(id) ,
     character_id
     INT NOT NULL,
-    FOREIGN KEY (id)
+    FOREIGN KEY (character_id)
     REFERENCES characters(id)
 );

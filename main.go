@@ -322,7 +322,7 @@ func drawGacha(w http.ResponseWriter,req *http.Request) {
 	if req.Method == http.MethodGet {
 		db, err := openDb()
 		//transactionの開始
-		tx, _ := db.Begin()
+		//tx, _ := db.Begin()
 
 		xToken := req.Header.Get("xToken")
 
@@ -337,7 +337,7 @@ func drawGacha(w http.ResponseWriter,req *http.Request) {
 			return
 		}
 		drawTimes := queryMap["times"][0]
-		rows, err := tx.Query("SELECT id FROM users where xToken = ?",xToken)
+		rows, err := db.Query("SELECT id FROM users where xToken = ?",xToken)
 		if err != nil {
 			return
 		}
@@ -354,23 +354,24 @@ func drawGacha(w http.ResponseWriter,req *http.Request) {
 			return
 		}
 
-		rows, err = tx.Query("SELECT name,id FROM characters ORDER BY RAND() LIMIT ?", drawTimes)
+		rows, err = db.Query("SELECT name,id FROM characters ORDER BY RAND() LIMIT ?", drawTimes)
 		if err != nil {
 			return
 		}
 		defer rows.Close()
 
 		characters := []model.Character{}
-		insertQuery := ""
+		insertQuery := "INSERT INTO user_character (user_id,character_id) VALUES "
 		for rows.Next() {
 			var character model.Character
 			err = rows.Scan(&character.Name, &character.ID)
 			characters = append(characters, character)
-			insertQuery +=
-				"INSERT INTO user_character VALUES "+"(" + user_id +"," + strconv.FormatInt(character.ID,10)+")"
-			db.Query(insertQuery)
-
+			insertQuery += "("+user_id +"," + strconv.FormatInt(character.ID,10)+"),"
 		}
+		insertQuery = strings.TrimRight(insertQuery, ",")
+		insertQuery += ";"
+		fmt.Println(insertQuery)
+		db.Query(insertQuery)
 
 		output := map[string]interface{}{
 			"data":    characters,
@@ -385,11 +386,6 @@ func drawGacha(w http.ResponseWriter,req *http.Request) {
 			_, err = fmt.Fprint(w, string(outjson))
 			return err
 		}()
-
-		if err != nil {
-			tx.Rollback()
-		}
-		tx.Commit()
 	}
 }
 
