@@ -4,7 +4,6 @@ import (
 	"Gacha/model"
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"log"
@@ -17,20 +16,22 @@ import (
 func TestGetUser(t *testing.T)  {
 	tt := []struct{
 		giveUserID string
-		wantUserID string
+		wantUserID int64
 	}{
-		{giveUserID: "1",wantUserID: "1"},
-		{giveUserID: "2",wantUserID: "2"},
+		{giveUserID: "1",wantUserID: 1},
+		{giveUserID: "2",wantUserID: 2},
+		{giveUserID: "100000",wantUserID: 0},
 	}
 
 	for _ , tc := range tt{
+		//arrange
 		url :=  "localhost:8090/user/get/?id="+tc.giveUserID
-		print(url+"\n")
 		req,err := http.NewRequest("GET",url,nil)
 		if err != nil{
 			t.Fatalf("could not create request %v",err)
 		}
 
+		//act
 		rec := httptest.NewRecorder()
 		getUser(rec,req)
 
@@ -48,7 +49,13 @@ func TestGetUser(t *testing.T)  {
 		if err := json.Unmarshal(data, &userJson); err != nil {
 			log.Fatal(err)
 		}
-		fmt.Println(userJson.Data.XToken)
+		//assertion
+		assert.Equal(t,
+			tc.wantUserID,
+			userJson.Data.ID,
+			"Fetched UserID is %v ",userJson.Data.ID,
+		)
+
 	}
 
 }

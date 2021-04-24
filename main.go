@@ -24,7 +24,6 @@ func getUser(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 
-	//db := database.DbConn()
 	db, err := openDb()
 	if err != nil {
 		http.Error(w, err.Error(), 401)
@@ -37,26 +36,68 @@ func getUser(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	id := queryMap["id"][0]
-	fmt.Println(id)
+	row_count,err := db.Query("SELECT COUNT(id) as userCount FROM users WHERE id = "+id)
 
-	rows, err := db.Query("SELECT * FROM users WHERE id = "+id)
+
+	type userCount struct {
+		count int
+	}
+
 	if err != nil {
 		panic(err)
 	}
-	//TODO userの情報を取得する
-	//TODO jsonに出力する。
-	for rows.Next() {
-		var user model.User
 
-		err = rows.Scan(&user.ID, &user.Name,
-			&user.Firstname, &user.Lastname,
-			&user.Email, &user.Password,
-			&user.Phone, &user.UserStatus,&user.XToken)
+	var dbCount userCount
+
+	for row_count.Next() {
+		err = row_count.Scan(&dbCount.count)
+	}
+
+	if dbCount.count != 0 {
+		rows, err := db.Query("SELECT * FROM users WHERE id = "+id)
+		if err != nil {
+			panic(err)
+		}
+
+		for rows.Next() {
+
+			var user model.User
+			err = rows.Scan(&user.ID, &user.Name,
+				&user.Firstname, &user.Lastname,
+				&user.Email, &user.Password,
+				&user.Phone, &user.UserStatus,&user.XToken)
+
+
+			output := map[string]interface{}{
+				"data":    user,
+				"message": "user data is fetched",
+			}
+			defer func() error {
+				outjson, err := json.Marshal(output)
+				if err != nil {
+					return err
+				}
+				w.Header().Set("content-Type", "application/json")
+				_, err = fmt.Fprint(w, string(outjson))
+				return err
+			}()
+
+		}
+
+	}else{
 		output := map[string]interface{}{
-			//Todo id = 2で得られるが、id=2aとしても得られるので修正する。
-			//Todo error のときのjsonも準備する。
-			"data":    user,
-			"message": "user data is fetched",
+			"data": model.User{
+				ID:         0,
+				Name:       "",
+				Firstname:  "",
+				Lastname:   "",
+				Email:      "",
+				Password:   "",
+				Phone:      "",
+				UserStatus: false,
+				XToken:     "",
+			},
+			"message": "user is not exist.",
 		}
 		defer func() error {
 			outjson, err := json.Marshal(output)
@@ -67,7 +108,6 @@ func getUser(w http.ResponseWriter, req *http.Request) {
 			_, err = fmt.Fprint(w, string(outjson))
 			return err
 		}()
-
 	}
 
 	return
@@ -332,7 +372,7 @@ func drawGacha(w http.ResponseWriter,req *http.Request) {
 			}
 			w.Header().Set("content-Type", "application/json")
 			_, err = fmt.Fprint(w, string(outjson))
-			fmt.Println("success to gacha" + drawTimes + "times")
+			//fmt.Println("success to gacha" + drawTimes + "times")
 			return err
 		}()
 	}
