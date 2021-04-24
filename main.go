@@ -19,11 +19,15 @@ func openDb() (*sql.DB, error) {
 	return db, err
 }
 
-func getUser(w http.ResponseWriter, req *http.Request) {
+func setHeader(w http.ResponseWriter,method string)http.ResponseWriter  {
 	w.Header().Set("Access-Control-Allow-Headers", "*")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Methods", method)
+	return w
+}
 
+func getUser(w http.ResponseWriter, req *http.Request) {
+	defer setHeader(w,"GET")
 	db, err := openDb()
 	if err != nil {
 		http.Error(w, err.Error(), 401)
@@ -114,9 +118,7 @@ func getUser(w http.ResponseWriter, req *http.Request) {
 }
 
 func createUser(w http.ResponseWriter, req *http.Request) {
-	w.Header().Set("Access-Control-Allow-Headers", "*")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+	defer setHeader(w,"POST")
 
 	if req.Method == http.MethodPost {
 		db := database.DbConn()
@@ -209,9 +211,7 @@ func createUser(w http.ResponseWriter, req *http.Request) {
 }
 
 func fetchXtoken(w http.ResponseWriter, req *http.Request) {
-	w.Header().Set("Access-Control-Allow-Headers", "*")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+	defer setHeader(w,"GET")
 
 	if req.Method == http.MethodGet {
 
@@ -331,10 +331,7 @@ func headers(w http.ResponseWriter, req *http.Request) {
 
 func drawGacha(w http.ResponseWriter,req *http.Request) {
 
-	w.Header().Set("Access-Control-Allow-Headers", "*")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-
+	setHeader(w,"GET")
 	if req.Method == http.MethodGet {
 		db, err := openDb()
 		if err != nil {
@@ -379,9 +376,7 @@ func drawGacha(w http.ResponseWriter,req *http.Request) {
 }
 
 func getCharacterList(w http.ResponseWriter, res *http.Request) {
-	w.Header().Set("Access-Control-Allow-Headers", "*")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+	setHeader(w,"GET")
 
 	if res.Method == http.MethodGet {
 
