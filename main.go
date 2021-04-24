@@ -21,10 +21,59 @@ func openDb() (*sql.DB, error) {
 }
 
 func setHeader(w http.ResponseWriter,method string)http.ResponseWriter  {
-	w.Header().Set("Access-Control-Allow-Headers", "*")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", method)
+
 	return w
+}
+func headers(w http.ResponseWriter, req *http.Request) {
+	for name, headers := range req.Header {
+		for _, h := range headers {
+			_, _ = fmt.Fprintf(w, "%v : %v\n", name, h)
+		}
+	}
+}
+func fetchXtoken(w http.ResponseWriter, req *http.Request) {
+	defer setHeader(w,"GET")
+
+	if req.Method == http.MethodGet {
+
+		queryMap := req.URL.Query()
+		if queryMap == nil {
+			return
+		}
+		userName := queryMap["Name"][0]
+		passWord := queryMap["Password"][0]
+
+		querySQL := fmt.Sprintf("SELECT xToken from users where Name = \"%s\" and Password = \"%s\" LIMIT 1", userName, passWord)
+
+		fmt.Println(querySQL)
+		db := database.DbConn()
+		rows, _ := db.Query(querySQL)
+
+		for rows.Next() {
+			var user model.User
+
+			_ = rows.Scan(&user.XToken)
+
+			fmt.Println(user.XToken)
+			output := map[string]interface{}{
+				"data":    user.XToken,
+				"status":  true,
+				"message": "user data is fetched",
+			}
+			fmt.Println(output)
+			defer func() error {
+				outjson, err := json.Marshal(output)
+				if err != nil {
+					return err
+				}
+				w.Header().Set("content-Type", "application/json")
+				_, err = fmt.Fprint(w, string(outjson))
+				return err
+			}()
+
+		}
+	}
+	return
 }
 
 func getUser(w http.ResponseWriter, req *http.Request) {
@@ -117,7 +166,6 @@ func getUser(w http.ResponseWriter, req *http.Request) {
 
 	return
 }
-
 func createUser(w http.ResponseWriter, req *http.Request) {
 	defer setHeader(w,"POST")
 
@@ -206,51 +254,6 @@ func createUser(w http.ResponseWriter, req *http.Request) {
 		}
 	}
 }
-
-func fetchXtoken(w http.ResponseWriter, req *http.Request) {
-	defer setHeader(w,"GET")
-
-	if req.Method == http.MethodGet {
-
-		queryMap := req.URL.Query()
-		if queryMap == nil {
-			return
-		}
-		userName := queryMap["Name"][0]
-		passWord := queryMap["Password"][0]
-
-		querySQL := fmt.Sprintf("SELECT xToken from users where Name = \"%s\" and Password = \"%s\" LIMIT 1", userName, passWord)
-
-		fmt.Println(querySQL)
-		db := database.DbConn()
-		rows, _ := db.Query(querySQL)
-
-		for rows.Next() {
-			var user model.User
-
-			_ = rows.Scan(&user.XToken)
-
-			fmt.Println(user.XToken)
-			output := map[string]interface{}{
-				"data":    user.XToken,
-				"status":  true,
-				"message": "user data is fetched",
-			}
-			fmt.Println(output)
-			defer func() error {
-				outjson, err := json.Marshal(output)
-				if err != nil {
-					return err
-				}
-				w.Header().Set("content-Type", "application/json")
-				_, err = fmt.Fprint(w, string(outjson))
-				return err
-			}()
-
-		}
-	}
-	return
-}
 func randomString(n int) string {
 	var letter = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
 
@@ -260,7 +263,6 @@ func randomString(n int) string {
 	}
 	return string(b)
 }
-
 func updateUser(w http.ResponseWriter, req *http.Request) {
 	setHeader(w,"PUT")
 	if req.Method == http.MethodPut {
@@ -294,7 +296,6 @@ func updateUser(w http.ResponseWriter, req *http.Request) {
 	}
 	return
 }
-
 func deleteUser(w http.ResponseWriter, req *http.Request) {
 	setHeader(w,"DELETE")
 	if req.Method == http.MethodDelete {
@@ -309,14 +310,6 @@ func deleteUser(w http.ResponseWriter, req *http.Request) {
 	}
 
 }
-func headers(w http.ResponseWriter, req *http.Request) {
-	for name, headers := range req.Header {
-		for _, h := range headers {
-			_, _ = fmt.Fprintf(w, "%v : %v\n", name, h)
-		}
-	}
-}
-
 func drawGacha(w http.ResponseWriter,req *http.Request) {
 
 	setHeader(w,"GET")
@@ -386,7 +379,6 @@ func drawGacha(w http.ResponseWriter,req *http.Request) {
 		}()
 	}
 }
-
 func getCharacterList(w http.ResponseWriter, res *http.Request) {
 	setHeader(w,"GET")
 
@@ -426,7 +418,6 @@ func getCharacterList(w http.ResponseWriter, res *http.Request) {
 	}
 }
 
-// middleware1 ...
 func aboutMethodMiddleWare(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		t1 := time.Now()
@@ -435,6 +426,17 @@ func aboutMethodMiddleWare(next http.HandlerFunc) http.HandlerFunc {
 		next.ServeHTTP(w, r)
 
 		log.Printf("[%s] %q %v\n", r.Method, r.URL.String(), t2.Sub(t1))
+
+	}
+}
+func setHeaderMiddleWare(next http.HandlerFunc,method string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		next.ServeHTTP(w, r)
+		w.Header().Set("Access-Control-Allow-Headers", "*")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", method)
+
 
 	}
 }
@@ -449,7 +451,7 @@ func main() {
 	mux := http.NewServeMux()
 
 	fmt.Println("successfully Launched")
-	mux.HandleFunc("/user/get/", aboutMethodMiddleWare(getUser))
+	mux.HandleFunc("/user/get/",   setHeaderMiddleWare(aboutMethodMiddleWare(getUser),"GET)"))
 	mux.HandleFunc("/user/fetch/", aboutMethodMiddleWare(fetchXtoken))
 	mux.HandleFunc("/user/create/", aboutMethodMiddleWare(createUser))
 	mux.HandleFunc("/user/update/", aboutMethodMiddleWare(updateUser))
