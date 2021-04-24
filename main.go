@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 )
 
 func openDb() (*sql.DB, error) {
@@ -347,8 +348,6 @@ func drawGacha(w http.ResponseWriter,req *http.Request) {
 		for rows.Next() {
 			err = rows.Scan(&user_id)
 		}
-		fmt.Println(user_id)
-
 		if err != nil {
 			http.Error(w, err.Error(), 401)
 			return
@@ -370,7 +369,6 @@ func drawGacha(w http.ResponseWriter,req *http.Request) {
 		}
 		insertQuery = strings.TrimRight(insertQuery, ",")
 		insertQuery += ";"
-		fmt.Println(insertQuery)
 		db.Query(insertQuery)
 
 		output := map[string]interface{}{
@@ -428,6 +426,19 @@ func getCharacterList(w http.ResponseWriter, res *http.Request) {
 	}
 }
 
+// middleware1 ...
+func aboutMethodMiddleWare(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		t1 := time.Now()
+
+		t2 := time.Now()
+		next.ServeHTTP(w, r)
+
+		log.Printf("[%s] %q %v\n", r.Method, r.URL.String(), t2.Sub(t1))
+
+	}
+}
+
 func main() {
 	//connection pool
 	_, err := database.DbInit()
@@ -435,17 +446,18 @@ func main() {
 		panic(err)
 	}
 	defer database.DbClose()
+	mux := http.NewServeMux()
 
 	fmt.Println("successfully Launched")
-	http.HandleFunc("/user/get/", getUser)
-	http.HandleFunc("/user/fetch/", fetchXtoken)
-	http.HandleFunc("/user/create/", createUser)
-	http.HandleFunc("/user/update/", updateUser)
-	http.HandleFunc("/user/delete/", deleteUser)
-	http.HandleFunc("/gacha/draw/", drawGacha)
-	http.HandleFunc("/character/list/", getCharacterList)
-	http.HandleFunc("/headers", headers)
-	if err := http.ListenAndServe(":8090", nil); err !=nil{
+	mux.HandleFunc("/user/get/", aboutMethodMiddleWare(getUser))
+	mux.HandleFunc("/user/fetch/", aboutMethodMiddleWare(fetchXtoken))
+	mux.HandleFunc("/user/create/", aboutMethodMiddleWare(createUser))
+	mux.HandleFunc("/user/update/", aboutMethodMiddleWare(updateUser))
+	mux.HandleFunc("/user/delete/", aboutMethodMiddleWare(deleteUser))
+	mux.HandleFunc("/gacha/draw/", aboutMethodMiddleWare(drawGacha))
+	mux.HandleFunc("/character/list/",aboutMethodMiddleWare(getCharacterList))
+	mux.HandleFunc("/headers", headers)
+	if err := http.ListenAndServe(":8090", mux); err !=nil{
 		log.Fatal(err)
 	}
 
