@@ -1,3 +1,7 @@
+-- testdbという名前のデータベースを作成
+CREATE DATABASE testdb;
+-- testdbをアクティブ
+use testdb;
 
 CREATE TABLE  characters
 (
@@ -10,7 +14,7 @@ CREATE TABLE  users
 (
     id  INT NOT NULL
         PRIMARY KEY,
-    name   TEXT NOT NULL ,
+    name   VARCHAR(64) UNIQUE NOT NULL ,
     FirstName  VARCHAR(100) NULL,
     LastName   VARCHAR(100) NULL,
     Email      VARCHAR(100) NOT NULL,
@@ -21,7 +25,7 @@ CREATE TABLE  users
 );
 
 CREATE TABLE user_character (
-    id INT NOT NULL AUTO_INCREMENT,
+    id INT NOT NULL AUTO_INCREMENT PRIMARY KEY ,
     user_id INT NOT NULL,
     FOREIGN KEY (user_id)
     REFERENCES users(id) ,

@@ -181,7 +181,7 @@ func createUser(w http.ResponseWriter, req *http.Request) {
 
 		if err != nil {
 			http.Error(w, err.Error(), 401)
-			return
+			panic(err)
 		}
 
 		for rows.Next() {
@@ -190,7 +190,7 @@ func createUser(w http.ResponseWriter, req *http.Request) {
 			queryMap := req.URL.Query()
 			if queryMap == nil {
 				http.Error(w, err.Error(), 401)
-				return
+				panic(err)
 			}
 
 			valueQuery := ""
