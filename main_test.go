@@ -77,7 +77,6 @@ func TestFetchGacha(t *testing.T) {
 		{getXToken: "5a84jjJkwzDkh9h2fhfU",wantXToken:"5a84jjJkwzDkh9h2fhfU",getTimes:"1" ,expectTimes:"1"},
 		{getXToken: "5a84jjJkwzDkh9h2fhfU",wantXToken:"5a84jjJkwzDkh9h2fhfU",getTimes:"2" ,expectTimes:"2"},
 		{getXToken: "5a84jjJkwzDkh9h2fhfU",wantXToken:"5a84jjJkwzDkh9h2fhfU",getTimes:"100" ,expectTimes:"2"},
-		//{getXToken: "notexistXtoken",wantXToken:"",getTimes:"100" ,expectTimes:"0"},
 
 	}
 
@@ -115,3 +114,79 @@ func TestFetchGacha(t *testing.T) {
 		)
 	}
 }
+
+type userTest struct {
+	Name string
+	Firstname string
+	Lastname string
+	Email string
+	Password string
+	Phone string
+}
+
+
+//
+//func TestCreateUser(t *testing.T) {
+//
+//	tt := []struct {
+//		inputUser userTest
+//		wanUser userTest
+//	}{
+//		{inputUser: userTest{
+//			Name:      "",
+//			Firstname: "",
+//			Lastname:  "",
+//			Email:     "",
+//			Password:  "",
+//			Phone:     "",
+//		},
+//		wanUser: userTest{
+//			Name:      "",
+//			Firstname: "",
+//			Lastname:  "",
+//			Email:     "",
+//			Password:  "",
+//			Phone:     "",
+//		},
+//		},
+//	}
+//
+//
+//	for  _,tc := range tt{
+//		length_userForm := 6
+//		query := ""
+//		for i := 0; i < length_userForm; i++ {
+//			query += tc.inputUser.
+//		}
+//		req,err := http.NewRequest("GET","localhost:8090/create/?times="+tc.getUser,nil)
+//		if err != nil{
+//			t.Fatalf("could not create request %v",err)
+//		}
+//
+//		rec := httptest.NewRecorder()
+//		drawGacha(rec,req)
+//
+//		res := rec.Result()
+//		defer res.Body.Close()
+//
+//		if res.StatusCode != http.StatusOK {
+//			t.Errorf("Expected status OK:got %v",res.Status)
+//		}
+//		data, err := ioutil.ReadAll(rec.Body)
+//
+//		_, err = strconv.Atoi(string((bytes.TrimSpace(data))))
+//
+//		gacha :=  make(map[string]interface{})
+//
+//		if err := json.Unmarshal(data, &gacha); err != nil {
+//			log.Fatal(err)
+//		}
+//		arr := gacha["data"].([]interface{})
+//
+//		assert.Equal(t,
+//			tc.expectTimes,
+//			strconv.Itoa(len(arr)),
+//			"Fetched Gacha data count is "+tc.getTimes,
+//		)
+//	}
+//}

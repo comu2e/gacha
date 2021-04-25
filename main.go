@@ -3,7 +3,6 @@ package main
 import (
 	"Gacha/database"
 	"Gacha/model"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
@@ -15,10 +14,10 @@ import (
 	"time"
 )
 
-func openDb() (*sql.DB, error) {
-	db, err := sql.Open("mysql", "root:password@/testdb")
-	return db, err
-}
+//func openDb() (*sql.DB, error) {
+//	db, err := sql.Open("mysql", "root:password@/testdb")
+//	return db, err
+//}
 
 func setHeader(w http.ResponseWriter,method string)http.ResponseWriter  {
 
@@ -48,6 +47,7 @@ func fetchXtoken(w http.ResponseWriter, req *http.Request) {
 		fmt.Println(querySQL)
 		db := database.DbConn()
 		rows, _ := db.Query(querySQL)
+		defer rows.Close()
 
 		for rows.Next() {
 			var user model.User
@@ -80,11 +80,8 @@ func getUser(w http.ResponseWriter, req *http.Request) {
 	defer setHeader(w,"GET")
 
 	xToken := req.Header.Get("xToken")
-	db, err := openDb()
-	if err != nil {
-		http.Error(w, err.Error(), 401)
-		return
-	}
+	db := database.DbConn()
+
 	defer db.Close()
 
 	queryMap := req.URL.Query()
@@ -92,6 +89,7 @@ func getUser(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	row_count,err := db.Query("SELECT COUNT(id) as userCount FROM users WHERE xToken=?",xToken)
+	defer row_count.Close()
 
 	type userCount struct {
 		count int
@@ -314,16 +312,12 @@ func drawGacha(w http.ResponseWriter,req *http.Request) {
 
 	setHeader(w,"GET")
 	if req.Method == http.MethodGet {
-		db, err := openDb()
+		db := database.DbConn()
 		//transactionの開始
 		//tx, _ := db.Begin()
 
 		xToken := req.Header.Get("xToken")
 
-		if err != nil {
-			http.Error(w, err.Error(), 401)
-			return
-		}
 		defer db.Close()
 
 		queryMap := req.URL.Query()
