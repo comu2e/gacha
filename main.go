@@ -218,7 +218,7 @@ func createUser(w http.ResponseWriter, req *http.Request) {
 			valueQuery += strconv.Itoa(id+1) + ","
 			columnQuery += "id" + ","
 
-			xToken := randomString(20)
+			xToken := generateXToken(20)
 			valueQuery += "\"" + xToken + "\""
 			columnQuery += "xToken" + ","
 
@@ -254,7 +254,7 @@ func createUser(w http.ResponseWriter, req *http.Request) {
 		}
 	}
 }
-func randomString(n int) string {
+func generateXToken(n int) string {
 	var letter = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
 
 	b := make([]rune, n)
