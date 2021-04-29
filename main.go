@@ -380,10 +380,11 @@ func getCharacterList(w http.ResponseWriter, res *http.Request) {
 
 func RequestLog(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		t1 := time.Now()
+		t_start := time.Now()
 		next.ServeHTTP(w, r)
-		t2 := time.Now()
-		log.Printf("[%s] %q %v\n", r.Method, r.URL.String(), t2.Sub(t1))
+		t_end := time.Now()
+
+		log.Printf("[%s] %q %v\n", r.Method, r.URL.String(), t_end.Sub(t_start))
 	}
 }
 func setHeaderMiddleWare(next http.HandlerFunc,method string) http.HandlerFunc {
@@ -397,7 +398,6 @@ func setHeaderMiddleWare(next http.HandlerFunc,method string) http.HandlerFunc {
 }
 
 func main(){
-	//connection pool
 	_, err := database.DbInit()
 	if err != nil {
 		panic(err)
