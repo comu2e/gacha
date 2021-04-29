@@ -14,23 +14,9 @@ import (
 	"time"
 )
 
-//func openDb() (*sql.DB, error) {
-//	db, err := sql.Open("mysql", "root:password@/testdb")
-//	return db, err
-//}
-func setHeader(w http.ResponseWriter,method string)http.ResponseWriter  {
 
-	return w
-}
-func headers(w http.ResponseWriter, req *http.Request) {
-	for name, headers := range req.Header {
-		for _, h := range headers {
-			_, _ = fmt.Fprintf(w, "%v : %v\n", name, h)
-		}
-	}
-}
 func fetchXtoken(w http.ResponseWriter, req *http.Request) {
-	defer setHeader(w,"GET")
+	//defer setHeader(w,"GET")
 
 	if req.Method == http.MethodGet {
 
@@ -76,17 +62,13 @@ func fetchXtoken(w http.ResponseWriter, req *http.Request) {
 }
 
 func getUser(w http.ResponseWriter, req *http.Request ){
-	defer setHeader(w,"GET")
+	//defer setHeader(w,"GET")
 
 	xToken := req.Header.Get("xToken")
 	db := database.DbConn()
 
 	defer db.Close()
 
-	queryMap := req.URL.Query()
-	if queryMap == nil {
-		return
-	}
 	row_count,err := db.Query("SELECT COUNT(id) as userCount FROM users WHERE xToken=?",xToken)
 	defer row_count.Close()
 
@@ -95,7 +77,7 @@ func getUser(w http.ResponseWriter, req *http.Request ){
 	}
 
 	if err != nil {
-		panic(err)
+		return
 	}
 
 	var dbCount userCount
@@ -164,7 +146,7 @@ func getUser(w http.ResponseWriter, req *http.Request ){
 	return
 }
 func createUser(w http.ResponseWriter, req *http.Request) {
-	defer setHeader(w,"POST")
+	//defer setHeader(w,"POST")
 
 	if req.Method == http.MethodPost {
 		db := database.DbConn()
@@ -261,7 +243,7 @@ func generateXToken(n int) string {
 	return string(b)
 }
 func updateUser(w http.ResponseWriter, req *http.Request) {
-	setHeader(w,"PUT")
+	//setHeader(w,"PUT")
 	if req.Method == http.MethodPut {
 		db := database.DbConn()
 
@@ -294,7 +276,7 @@ func updateUser(w http.ResponseWriter, req *http.Request) {
 	return
 }
 func deleteUser(w http.ResponseWriter, req *http.Request) {
-	setHeader(w,"DELETE")
+	//setHeader(w,"DELETE")
 	if req.Method == http.MethodDelete {
 		db := database.DbConn()
 		tx, _ := db.Begin()
@@ -309,7 +291,7 @@ func deleteUser(w http.ResponseWriter, req *http.Request) {
 }
 func drawGacha(w http.ResponseWriter,req *http.Request) {
 
-	setHeader(w,"GET")
+	//setHeader(w,"GET")
 	if req.Method == http.MethodGet {
 		db := database.DbConn()
 		//transactionの開始
@@ -373,7 +355,7 @@ func drawGacha(w http.ResponseWriter,req *http.Request) {
 	}
 }
 func getCharacterList(w http.ResponseWriter, res *http.Request) {
-	setHeader(w,"GET")
+	//setHeader(w,"GET")
 
 	if res.Method == http.MethodGet {
 
@@ -451,7 +433,6 @@ func main() {
 	mux.HandleFunc("/user/delete/", aboutMethodMiddleWare(deleteUser))
 	mux.HandleFunc("/gacha/draw/", aboutMethodMiddleWare(drawGacha))
 	mux.HandleFunc("/character/list/",aboutMethodMiddleWare(getCharacterList))
-	mux.HandleFunc("/headers", headers)
 	if err := http.ListenAndServe(":8090", mux); err !=nil{
 		log.Fatal(err)
 	}
