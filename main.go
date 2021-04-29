@@ -77,6 +77,7 @@ func getUser(w http.ResponseWriter, req *http.Request ){
 	}
 
 	if err != nil {
+		http.Error(w, err.Error(), 401)
 		return
 	}
 
@@ -89,7 +90,8 @@ func getUser(w http.ResponseWriter, req *http.Request ){
 	if dbCount.count != 0 {
 		rows, err := db.Query("SELECT * FROM users WHERE xToken=?",xToken)
 		if err != nil {
-			panic(err)
+			http.Error(w, err.Error(), 401)
+			return
 		}
 
 		for rows.Next() {
@@ -160,7 +162,7 @@ func createUser(w http.ResponseWriter, req *http.Request) {
 
 		if err != nil {
 			http.Error(w, err.Error(), 401)
-			panic(err)
+			return
 		}
 
 		for rows.Next() {
@@ -186,7 +188,7 @@ func createUser(w http.ResponseWriter, req *http.Request) {
 
 						if hasUserCreated != 0 {
 							//userがunique出ないときにjsonでstatus:falseを返す
-							panic(err)
+							http.Error(w, err.Error(), 401)
 						}
 					}
 				}
@@ -252,6 +254,7 @@ func updateUser(w http.ResponseWriter, req *http.Request) {
 		//auto incrementで追加
 		queryMap := req.URL.Query()
 		if queryMap == nil {
+			http.Error(w, err.Error(), 401)
 			return
 		}
 		xToken := req.Header.Get("xToken")
@@ -268,6 +271,7 @@ func updateUser(w http.ResponseWriter, req *http.Request) {
 		tx.Query(query)
 		if err != nil {
 			err = tx.Rollback()
+			http.Error(w, err.Error(), 401)
 			return
 		}
 
@@ -279,13 +283,17 @@ func deleteUser(w http.ResponseWriter, req *http.Request) {
 	//setHeader(w,"DELETE")
 	if req.Method == http.MethodDelete {
 		db := database.DbConn()
-		tx, _ := db.Begin()
+		tx,err := db.Begin()
 		xToken := req.Header.Get("xToken")
-		_, errDel := tx.Query("DELETE FROM users where xToken = ?", xToken)
-		if errDel != nil {
+		_, err = tx.Query("DELETE FROM users where xToken = ?", xToken)
+		if err != nil {
+			http.Error(w, err.Error(), 401)
 			_ = tx.Rollback()
 		}
-		_ = tx.Commit()
+		err = tx.Commit()
+		if err != nil {
+			http.Error(w, err.Error(), 401)
+		}
 	}
 
 }
@@ -295,19 +303,17 @@ func drawGacha(w http.ResponseWriter,req *http.Request) {
 	if req.Method == http.MethodGet {
 		db := database.DbConn()
 		//transactionの開始
-		//tx, _ := db.Begin()
-
 		xToken := req.Header.Get("xToken")
-
 		defer db.Close()
-
 		queryMap := req.URL.Query()
 		if queryMap == nil {
+
 			return
 		}
 		drawTimes := queryMap["times"][0]
 		rows, err := db.Query("SELECT id FROM users where xToken = ?",xToken)
 		if err != nil {
+			http.Error(w, err.Error(), 401)
 			return
 		}
 		defer rows.Close()
@@ -323,6 +329,7 @@ func drawGacha(w http.ResponseWriter,req *http.Request) {
 
 		rows, err = db.Query("SELECT name,id FROM characters ORDER BY RAND() LIMIT ?", drawTimes)
 		if err != nil {
+			http.Error(w, err.Error(), 401)
 			return
 		}
 		defer rows.Close()
