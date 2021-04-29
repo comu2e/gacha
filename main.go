@@ -16,10 +16,7 @@ import (
 
 
 func fetchXtoken(w http.ResponseWriter, req *http.Request) {
-	//defer setHeader(w,"GET")
-
 	if req.Method == http.MethodGet {
-
 		queryMap := req.URL.Query()
 		if queryMap == nil {
 			return
@@ -31,6 +28,8 @@ func fetchXtoken(w http.ResponseWriter, req *http.Request) {
 
 		fmt.Println(querySQL)
 		db := database.DbConn()
+
+		defer db.Close()
 		rows, _ := db.Query(querySQL)
 		defer rows.Close()
 
@@ -51,7 +50,6 @@ func fetchXtoken(w http.ResponseWriter, req *http.Request) {
 				if err != nil {
 					return err
 				}
-				w.Header().Set("content-Type", "application/json")
 				_, err = fmt.Fprint(w, string(outjson))
 				return err
 			}()
@@ -62,13 +60,8 @@ func fetchXtoken(w http.ResponseWriter, req *http.Request) {
 }
 
 func getUser(w http.ResponseWriter, req *http.Request ){
-	//defer setHeader(w,"GET")
-
 	xToken := req.Header.Get("xToken")
 	db := database.DbConn()
-
-	defer db.Close()
-
 	row_count,err := db.Query("SELECT COUNT(id) as userCount FROM users WHERE xToken=?",xToken)
 	defer row_count.Close()
 
@@ -112,7 +105,6 @@ func getUser(w http.ResponseWriter, req *http.Request ){
 				if err != nil {
 					return err
 				}
-				w.Header().Set("content-Type", "application/json")
 				_, err = fmt.Fprint(w, string(outjson))
 				return err
 			}()
@@ -139,7 +131,6 @@ func getUser(w http.ResponseWriter, req *http.Request ){
 			if err != nil {
 				return err
 			}
-			w.Header().Set("content-Type", "application/json")
 			_, err = fmt.Fprint(w, string(outjson))
 			return err
 		}()
@@ -148,18 +139,14 @@ func getUser(w http.ResponseWriter, req *http.Request ){
 	return
 }
 func createUser(w http.ResponseWriter, req *http.Request) {
-	//defer setHeader(w,"POST")
 
 	if req.Method == http.MethodPost {
 		db := database.DbConn()
-
 		//transactionの開始
 		tx, _ := db.Begin()
-
 		//auto incrementで追加
 		rows, err := db.Query("SELECT max(id) FROM users")
 		//usernameをユニークにするためにusernameのリストを取得する。
-
 		if err != nil {
 			http.Error(w, err.Error(), 401)
 			return
@@ -209,14 +196,13 @@ func createUser(w http.ResponseWriter, req *http.Request) {
 			query := "(" + columnQuery + ") " + "VALUES (" + valueQuery + ");"
 			fmt.Println(query)
 			_, err := tx.Query("INSERT INTO users" + query)
-
 			if err != nil {
 				//	//失敗したらロールバック
 				_ = tx.Rollback()
 				http.Error(w, err.Error(), 401)
 				return
 			}
-			////成功したらCommit
+			//成功したらCommit
 			_ = tx.Commit()
 			output := map[string]interface{}{
 				"x-token": xToken,
@@ -228,7 +214,6 @@ func createUser(w http.ResponseWriter, req *http.Request) {
 				if err != nil {
 					return err
 				}
-				w.Header().Set("content-Type", "application/json")
 				_, err = fmt.Fprint(w, string(outjson))
 				return err
 			}()
@@ -245,7 +230,6 @@ func generateXToken(n int) string {
 	return string(b)
 }
 func updateUser(w http.ResponseWriter, req *http.Request) {
-	//setHeader(w,"PUT")
 	if req.Method == http.MethodPut {
 		db := database.DbConn()
 
@@ -280,7 +264,6 @@ func updateUser(w http.ResponseWriter, req *http.Request) {
 	return
 }
 func deleteUser(w http.ResponseWriter, req *http.Request) {
-	//setHeader(w,"DELETE")
 	if req.Method == http.MethodDelete {
 		db := database.DbConn()
 		tx,err := db.Begin()
@@ -299,12 +282,11 @@ func deleteUser(w http.ResponseWriter, req *http.Request) {
 }
 func drawGacha(w http.ResponseWriter,req *http.Request) {
 
-	//setHeader(w,"GET")
 	if req.Method == http.MethodGet {
 		db := database.DbConn()
 		//transactionの開始
 		xToken := req.Header.Get("xToken")
-		defer db.Close()
+		//defer db.Close()
 		queryMap := req.URL.Query()
 		if queryMap == nil {
 
@@ -355,20 +337,17 @@ func drawGacha(w http.ResponseWriter,req *http.Request) {
 			if err != nil {
 				return err
 			}
-			w.Header().Set("content-Type", "application/json")
 			_, err = fmt.Fprint(w, string(outjson))
 			return err
 		}()
 	}
 }
 func getCharacterList(w http.ResponseWriter, res *http.Request) {
-	//setHeader(w,"GET")
 
 	if res.Method == http.MethodGet {
 
 		db := database.DbConn()
 
-		defer db.Close()
 		queryMap := res.URL.Query()
 		if queryMap == nil {
 			return
@@ -393,37 +372,31 @@ func getCharacterList(w http.ResponseWriter, res *http.Request) {
 			if err != nil {
 				return err
 			}
-			w.Header().Set("content-Type", "application/json")
 			_, err = fmt.Fprint(w, string(outjson))
 			return err
 		}()
 	}
 }
 
-func aboutMethodMiddleWare(next http.HandlerFunc) http.HandlerFunc {
+func RequestLog(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		t1 := time.Now()
-
-		t2 := time.Now()
 		next.ServeHTTP(w, r)
-
+		t2 := time.Now()
 		log.Printf("[%s] %q %v\n", r.Method, r.URL.String(), t2.Sub(t1))
-
 	}
 }
 func setHeaderMiddleWare(next http.HandlerFunc,method string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-
 		next.ServeHTTP(w, r)
+		w.Header().Set("content-Type", "application/json")
 		w.Header().Set("Access-Control-Allow-Headers", "*")
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Access-Control-Allow-Methods", method)
-
-
 	}
 }
 
-func main() {
+func main(){
 	//connection pool
 	_, err := database.DbInit()
 	if err != nil {
@@ -431,17 +404,15 @@ func main() {
 	}
 	defer database.DbClose()
 	mux := http.NewServeMux()
-
 	fmt.Println("successfully Launched")
-	mux.HandleFunc("/user/get/",   setHeaderMiddleWare(aboutMethodMiddleWare(getUser),"GET)"))
-	mux.HandleFunc("/user/fetch/", aboutMethodMiddleWare(fetchXtoken))
-	mux.HandleFunc("/user/create/", aboutMethodMiddleWare(createUser))
-	mux.HandleFunc("/user/update/", aboutMethodMiddleWare(updateUser))
-	mux.HandleFunc("/user/delete/", aboutMethodMiddleWare(deleteUser))
-	mux.HandleFunc("/gacha/draw/", aboutMethodMiddleWare(drawGacha))
-	mux.HandleFunc("/character/list/",aboutMethodMiddleWare(getCharacterList))
-	if err := http.ListenAndServe(":8090", mux); err !=nil{
+	mux.HandleFunc("/user/get/",   RequestLog(setHeaderMiddleWare(getUser,     "GET)")))
+	mux.HandleFunc("/user/fetch/", RequestLog(setHeaderMiddleWare(fetchXtoken, "GET")))
+	mux.HandleFunc("/user/create/",RequestLog(setHeaderMiddleWare(createUser,  "POST")))
+	mux.HandleFunc("/user/update/",RequestLog(setHeaderMiddleWare(updateUser,  "PUT")))
+	mux.HandleFunc("/user/delete/",RequestLog(setHeaderMiddleWare(deleteUser,  "DELETE")))
+	mux.HandleFunc("/gacha/draw/", RequestLog(setHeaderMiddleWare(drawGacha,    "GET")))
+	mux.HandleFunc("/character/list/", RequestLog(setHeaderMiddleWare(getCharacterList, "GET")))
+	if err := http.ListenAndServe(":8090", mux); err != nil {
 		log.Fatal(err)
 	}
-
 }
