@@ -14,6 +14,7 @@ import (
 )
 
 func TestGetUser(t *testing.T)  {
+
 	tt := []struct{
 		getXToken string
 		wantXToken string

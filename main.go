@@ -18,7 +18,6 @@ import (
 //	db, err := sql.Open("mysql", "root:password@/testdb")
 //	return db, err
 //}
-
 func setHeader(w http.ResponseWriter,method string)http.ResponseWriter  {
 
 	return w
@@ -76,7 +75,7 @@ func fetchXtoken(w http.ResponseWriter, req *http.Request) {
 	return
 }
 
-func getUser(w http.ResponseWriter, req *http.Request) {
+func getUser(w http.ResponseWriter, req *http.Request ){
 	defer setHeader(w,"GET")
 
 	xToken := req.Header.Get("xToken")
