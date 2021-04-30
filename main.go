@@ -26,7 +26,6 @@ func fetchXtoken(w http.ResponseWriter, req *http.Request) {
 
 		querySQL := fmt.Sprintf("SELECT xToken from users where Name = \"%s\" and Password = \"%s\" LIMIT 1", userName, passWord)
 
-		fmt.Println(querySQL)
 		db := database.DbConn()
 
 		defer db.Close()
@@ -61,56 +60,51 @@ func fetchXtoken(w http.ResponseWriter, req *http.Request) {
 
 func getUser(w http.ResponseWriter, req *http.Request ){
 	xToken := req.Header.Get("xToken")
-	db := database.DbConn()
-	row_count,err := db.Query("SELECT COUNT(id) as userCount FROM users WHERE xToken=?",xToken)
-	defer row_count.Close()
+	if len(xToken) != 0{
+		db := database.DbConn()
+		row_count,err := db.Query("SELECT COUNT(id) as userCount FROM users WHERE xToken=?",xToken)
+		defer row_count.Close()
 
-	type userCount struct {
-		count int
-	}
-
-	if err != nil {
-		http.Error(w, err.Error(), 401)
-		return
-	}
-
-	var dbCount userCount
-
-	for row_count.Next() {
-		err = row_count.Scan(&dbCount.count)
-	}
-
-	if dbCount.count != 0 {
-		rows, err := db.Query("SELECT * FROM users WHERE xToken=?",xToken)
+		type userCount struct {
+			count int
+		}
 		if err != nil {
 			http.Error(w, err.Error(), 401)
 			return
 		}
-
-		for rows.Next() {
-
-			var user model.User
-			err = rows.Scan(&user.ID, &user.Name,
-				&user.Firstname, &user.Lastname,
-				&user.Email, &user.Password,
-				&user.Phone, &user.UserStatus,&user.XToken)
-
-
-			output := map[string]interface{}{
-				"data":    user,
-				"message": "user data is fetched",
-			}
-			defer func() error {
-				outjson, err := json.Marshal(output)
-				if err != nil {
-					return err
-				}
-				_, err = fmt.Fprint(w, string(outjson))
-				return err
-			}()
-
+		var dbCount userCount
+		for row_count.Next() {
+			err = row_count.Scan(&dbCount.count)
 		}
 
+		if dbCount.count != 0 {
+			rows, err := db.Query("SELECT * FROM users WHERE xToken=?",xToken)
+			if err != nil {
+				http.Error(w, err.Error(), 401)
+				return
+			}
+
+			for rows.Next() {
+
+				var user model.User
+				err = rows.Scan(&user.ID, &user.Name,
+					&user.Firstname, &user.Lastname,
+					&user.Email, &user.Password,
+					&user.Phone, &user.UserStatus,&user.XToken)
+				output := map[string]interface{}{
+					"data":    user,
+					"message": "user data is fetched",
+				}
+				defer func() error {
+					outjson, err := json.Marshal(output)
+					if err != nil {
+						return err
+					}
+					_, err = fmt.Fprint(w, string(outjson))
+					return err
+				}()
+			}
+		}
 	}else{
 		output := map[string]interface{}{
 			"data": model.User{
@@ -132,6 +126,8 @@ func getUser(w http.ResponseWriter, req *http.Request ){
 				return err
 			}
 			_, err = fmt.Fprint(w, string(outjson))
+			http.Error(w, err.Error(), 501)
+
 			return err
 		}()
 	}
@@ -158,7 +154,7 @@ func createUser(w http.ResponseWriter, req *http.Request) {
 			queryMap := req.URL.Query()
 			if queryMap == nil {
 				http.Error(w, err.Error(), 401)
-				panic(err)
+				return
 			}
 
 			valueQuery := ""
@@ -174,7 +170,6 @@ func createUser(w http.ResponseWriter, req *http.Request) {
 						err = rowsCount.Scan(&hasUserCreated)
 
 						if hasUserCreated != 0 {
-							//userがunique出ないときにjsonでstatus:falseを返す
 							http.Error(w, err.Error(), 401)
 						}
 					}
@@ -194,7 +189,6 @@ func createUser(w http.ResponseWriter, req *http.Request) {
 			columnQuery = strings.TrimRight(columnQuery, ",")
 
 			query := "(" + columnQuery + ") " + "VALUES (" + valueQuery + ");"
-			fmt.Println(query)
 			_, err := tx.Query("INSERT INTO users" + query)
 			if err != nil {
 				//	//失敗したらロールバック
@@ -268,78 +262,82 @@ func deleteUser(w http.ResponseWriter, req *http.Request) {
 		db := database.DbConn()
 		tx,err := db.Begin()
 		xToken := req.Header.Get("xToken")
-		_, err = tx.Query("DELETE FROM users where xToken = ?", xToken)
-		if err != nil {
-			http.Error(w, err.Error(), 401)
-			_ = tx.Rollback()
-		}
-		err = tx.Commit()
-		if err != nil {
-			http.Error(w, err.Error(), 401)
+
+		if len(xToken) != 0{
+			_, err = tx.Query("DELETE FROM users where xToken = ?", xToken)
+			if err != nil {
+				http.Error(w, err.Error(), 401)
+				_ = tx.Rollback()
+			}
+			err = tx.Commit()
+			if err != nil {
+				http.Error(w, err.Error(), 401)
+			}
+		} else {
+			http.Error(w, err.Error(), 501)
 		}
 	}
-
 }
 func drawGacha(w http.ResponseWriter,req *http.Request) {
 
 	if req.Method == http.MethodGet {
-		db := database.DbConn()
-		//transactionの開始
 		xToken := req.Header.Get("xToken")
-		//defer db.Close()
-		queryMap := req.URL.Query()
-		if queryMap == nil {
-
-			return
-		}
-		drawTimes := queryMap["times"][0]
-		rows, err := db.Query("SELECT id FROM users where xToken = ?",xToken)
-		if err != nil {
-			http.Error(w, err.Error(), 401)
-			return
-		}
-		defer rows.Close()
-
-		var user_id string
-		for rows.Next() {
-			err = rows.Scan(&user_id)
-		}
-		if err != nil {
-			http.Error(w, err.Error(), 401)
-			return
-		}
-
-		rows, err = db.Query("SELECT name,id FROM characters ORDER BY RAND() LIMIT ?", drawTimes)
-		if err != nil {
-			http.Error(w, err.Error(), 401)
-			return
-		}
-		defer rows.Close()
-
-		characters := []model.Character{}
-		insertQuery := "INSERT INTO user_character (user_id,character_id) VALUES "
-		for rows.Next() {
-			var character model.Character
-			err = rows.Scan(&character.Name, &character.ID)
-			characters = append(characters, character)
-			insertQuery += "("+user_id +"," + strconv.FormatInt(character.ID,10)+"),"
-		}
-		insertQuery = strings.TrimRight(insertQuery, ",")
-		insertQuery += ";"
-		db.Query(insertQuery)
-
-		output := map[string]interface{}{
-			"data":    characters,
-			"message": "character data is fetched",
-		}
-		defer func() error {
-			outjson, err := json.Marshal(output)
-			if err != nil {
-				return err
+		if len(xToken) != 0 {
+			db := database.DbConn()
+			//transactionの開始
+			queryMap := req.URL.Query()
+			if queryMap == nil {
+				return
 			}
-			_, err = fmt.Fprint(w, string(outjson))
-			return err
-		}()
+			drawTimes := queryMap["times"][0]
+			rows, err := db.Query("SELECT id FROM users where xToken = ?", xToken)
+			if err != nil {
+				http.Error(w, err.Error(), 401)
+				return
+			}
+			defer rows.Close()
+
+			var user_id string
+			for rows.Next() {
+				err = rows.Scan(&user_id)
+			}
+			if err != nil {
+				http.Error(w, err.Error(), 401)
+				return
+			}
+
+			rows, err = db.Query("SELECT name,id FROM characters ORDER BY RAND() LIMIT ?", drawTimes)
+			if err != nil {
+				http.Error(w, err.Error(), 401)
+				return
+			}
+			defer rows.Close()
+
+			characters := []model.Character{}
+			insertQuery := "INSERT INTO user_character (user_id,character_id) VALUES "
+			for rows.Next() {
+				var character model.Character
+				err = rows.Scan(&character.Name, &character.ID)
+				characters = append(characters, character)
+				insertQuery += "(" + user_id + "," + strconv.FormatInt(character.ID, 10) + "),"
+			}
+			insertQuery = strings.TrimRight(insertQuery, ",")
+			insertQuery += ";"
+			db.Query(insertQuery)
+
+			output := map[string]interface{}{
+				"data":    characters,
+				"message": "character data is fetched",
+			}
+			defer func() error {
+				outjson, err := json.Marshal(output)
+				if err != nil {
+					return err
+				}
+				_, err = fmt.Fprint(w, string(outjson))
+				return err
+			}()
+		}
 	}
 }
 func getCharacterList(w http.ResponseWriter, res *http.Request) {

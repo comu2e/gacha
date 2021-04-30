@@ -2,13 +2,13 @@ package database
 
 import (
 	"database/sql"
-
 	_ "github.com/go-sql-driver/mysql"
 )
 
 var db *sql.DB
 
 // データベースに接続する
+
 func DbInit() (*sql.DB, error) {
 	var err error
 	db, err = sql.Open("mysql", "root:password@/testdb")
