@@ -5,24 +5,29 @@ use testdb;
 
 CREATE TABLE  characters
 (
-    name VARCHAR(100) NULL UNIQUE ,
-    id  INT NOT NULL
-        PRIMARY KEY
-);
-
-CREATE TABLE  users
-(
+    name VARCHAR(100) NULL,
     id  INT NOT NULL
         PRIMARY KEY,
-    name   VARCHAR(64) UNIQUE NOT NULL ,
+    CONSTRAINT name
+    UNIQUE (name)
+);
+
+CREATE TABLE users
+(
+    id         INT NOT NULL PRIMARY KEY,
+    name       VARCHAR(64)  NOT NULL,
     FirstName  VARCHAR(100) NULL,
     LastName   VARCHAR(100) NULL,
     Email      VARCHAR(100) NOT NULL,
     Password   VARCHAR(100) NOT NULL,
     Phone      VARCHAR(11)  NULL,
-    UserStatus TINYINT(1) NOT NULL,
-    xToken     VARCHAR(20) NOT NULL
+    UserStatus tinyint(1)   NOT NULL,
+    xToken     VARCHAR(100)  NOT NULL,
+    CONSTRAINT name
+        UNIQUE (name)
 );
+
+
 
 CREATE TABLE user_character (
     id INT NOT NULL AUTO_INCREMENT PRIMARY KEY ,

@@ -1,7 +1,7 @@
 package main
 
 import (
-	"Gacha/model"
+	"Gacha/database"
 	"bytes"
 	"encoding/json"
 	"github.com/stretchr/testify/assert"
@@ -13,60 +13,68 @@ import (
 	"testing"
 )
 
-func TestGetUser(t *testing.T)  {
-
-	tt := []struct{
-		giveXToken string
-		wantXToken string
-		wantUserID int64
-	}{
-		{giveXToken: "BpLnfgDsc2WD8F2qNfHK",wantXToken:"BpLnfgDsc2WD8F2qNfHK",wantUserID:1},
-		{giveXToken: "5a84jjJkwzDkh9h2fhfU",wantXToken:"5a84jjJkwzDkh9h2fhfU",wantUserID:2},
-		{giveXToken: "notexistXtoken",wantXToken:"",wantUserID:0},
-	}
-
-	for _ , tc := range tt{
-		//arrange
-		url :=  "localhost:8090/user/get/"
-		req,err := http.NewRequest("GET",url,nil)
-		//xtokenを設定
-		req.Header.Set("xToken",tc.giveXToken)
-
-		if err != nil{
-			t.Fatalf("could not create request %v",err)
-		}
-
-		//act
-		rec := httptest.NewRecorder()
-		getUser(rec,req)
-
-		res := rec.Result()
-		defer res.Body.Close()
-
-		if res.StatusCode != http.StatusOK {
-			t.Errorf("Expected status OK:got %v",res.Status)
-		}
-		data, err := ioutil.ReadAll(rec.Body)
-
-		_, err = strconv.Atoi(string(bytes.TrimSpace(data)))
-
-		var userJson model.UserJson
-		if err := json.Unmarshal(data, &userJson); err != nil {
-			log.Fatal(err)
-		}
-		//assertion
-		assert.Equal(t,
-			tc.wantUserID,
-			userJson.Data.ID,
-			"Fetched UserID is %v ",userJson.Data.ID,
-		)
-
-	}
-
-}
+//func TestGetUser(t *testing.T)  {
+//	_, err := database.DbInit()
+//	if err != nil {
+//		panic(err)
+//	}
+//	defer database.DbClose()
+//	tt := []struct{
+//		giveXToken string
+//		wantXToken string
+//		wantUserID int64
+//	}{
+//		{giveXToken: "BpLnfgDsc2WD8F2qNfHK",wantXToken:"BpLnfgDsc2WD8F2qNfHK",wantUserID:1},
+//		{giveXToken: "5a84jjJkwzDkh9h2fhfU",wantXToken:"5a84jjJkwzDkh9h2fhfU",wantUserID:2},
+//		{giveXToken: "notexistXtoken",wantXToken:"",wantUserID:0},
+//	}
+//
+//	for _ , tc := range tt{
+//		//arrange
+//		url :=  "localhost:8090/user/get/"
+//		req,err := http.NewRequest("GET",url,nil)
+//		//xtokenを設定
+//		req.Header.Set("xToken",tc.giveXToken)
+//
+//		if err != nil{
+//			t.Fatalf("could not create request %v",err)
+//		}
+//
+//		//act
+//		rec := httptest.NewRecorder()
+//		getUser(rec,req)
+//
+//		res := rec.Result()
+//		defer res.Body.Close()
+//
+//		if res.StatusCode != http.StatusOK {
+//			t.Errorf("Expected status OK:got %v",res.Status)
+//		}
+//		data, err := ioutil.ReadAll(rec.Body)
+//
+//		_, err = strconv.Atoi(string(bytes.TrimSpace(data)))
+//
+//		var userJson model.UserJson
+//		if err := json.Unmarshal(data, &userJson); err != nil {
+//			log.Fatal(err)
+//		}
+//		//assertion
+//		assert.Equal(t,
+//			tc.wantUserID,
+//			userJson.Data.ID,
+//			"Fetched UserID is %v ",userJson.Data.ID,
+//		)
+//
+//	}
+//
+//}
 
 func TestFetchGacha(t *testing.T) {
-
+	_, err := database.DbInit()
+	if err != nil {
+		panic(err)
+	}
+	defer database.DbClose()
 	tt := []struct{
 		giveXToken string
 		wantXToken string
@@ -77,7 +85,7 @@ func TestFetchGacha(t *testing.T) {
 		{giveXToken: "BpLnfgDsc2WD8F2qNfHK",wantXToken:"BpLnfgDsc2WD8F2qNfHK",giveTimes:"2" ,expectTimes:"2"},
 		{giveXToken: "5a84jjJkwzDkh9h2fhfU",wantXToken:"5a84jjJkwzDkh9h2fhfU",giveTimes:"1" ,expectTimes:"1"},
 		{giveXToken: "5a84jjJkwzDkh9h2fhfU",wantXToken:"5a84jjJkwzDkh9h2fhfU",giveTimes:"2" ,expectTimes:"2"},
-		{giveXToken: "5a84jjJkwzDkh9h2fhfU",wantXToken:"5a84jjJkwzDkh9h2fhfU",giveTimes:"100" ,expectTimes:"2"},
+		{giveXToken: "5a84jjJkwzDkh9h2fhfU",wantXToken:"5a84jjJkwzDkh9h2fhfU",giveTimes:"100" ,expectTimes:"5"},
 
 	}
 
