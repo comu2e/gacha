@@ -16,6 +16,7 @@ import (
 
 
 func fetchXtoken(w http.ResponseWriter, req *http.Request) {
+
 	if req.Method == http.MethodGet {
 		queryMap := req.URL.Query()
 		if queryMap == nil {
@@ -25,10 +26,9 @@ func fetchXtoken(w http.ResponseWriter, req *http.Request) {
 		passWord := queryMap["Password"][0]
 
 		querySQL := fmt.Sprintf("SELECT xToken from users where Name = \"%s\" and Password = \"%s\" LIMIT 1", userName, passWord)
-
+		fmt.Println(querySQL)
 		db := database.DbConn()
 
-		defer database.DbClose()
 		rows := db.QueryRow(querySQL)
 
 		var user model.User
@@ -258,7 +258,9 @@ func deleteUser(_ http.ResponseWriter, req *http.Request) {
 	}
 }
 func drawGacha(w http.ResponseWriter,req *http.Request) {
-
+	w.Header().Set("content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Headers", "*")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	if req.Method == http.MethodGet {
 		xToken := req.Header.Get("xToken")
 		if len(xToken) != 0 {
@@ -276,7 +278,7 @@ func drawGacha(w http.ResponseWriter,req *http.Request) {
 			if err != nil {
 				return
 			}
-			rows = db.QueryRow("SELECT name,id FROM characters ORDER BY RAND() LIMIT ?", drawTimes)
+			rows = db.QueryRow("SELECT name,id FROM characters ORDER BY RAND() LIMIT ?",drawTimes)
 
 			var characters []model.Character
 			insertQuery := "INSERT INTO user_character (user_id,character_id) VALUES "
@@ -361,11 +363,12 @@ func RequestLog(next http.HandlerFunc) http.HandlerFunc {
 }
 func setHeaderMiddleWare(next http.HandlerFunc,method string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		next.ServeHTTP(w, r)
 		w.Header().Set("content-Type", "application/json")
 		w.Header().Set("Access-Control-Allow-Headers", "*")
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Access-Control-Allow-Methods", method)
+		next.ServeHTTP(w, r)
+
 	}
 }
 
