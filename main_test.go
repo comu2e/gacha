@@ -16,13 +16,13 @@ import (
 func TestGetUser(t *testing.T)  {
 
 	tt := []struct{
-		getXToken string
+		giveXToken string
 		wantXToken string
 		wantUserID int64
 	}{
-		{getXToken: "BpLnfgDsc2WD8F2qNfHK",wantXToken:"BpLnfgDsc2WD8F2qNfHK",wantUserID:1},
-		{getXToken: "5a84jjJkwzDkh9h2fhfU",wantXToken:"5a84jjJkwzDkh9h2fhfU",wantUserID:2},
-		{getXToken: "notexistXtoken",wantXToken:"",wantUserID:0},
+		{giveXToken: "BpLnfgDsc2WD8F2qNfHK",wantXToken:"BpLnfgDsc2WD8F2qNfHK",wantUserID:1},
+		{giveXToken: "5a84jjJkwzDkh9h2fhfU",wantXToken:"5a84jjJkwzDkh9h2fhfU",wantUserID:2},
+		{giveXToken: "notexistXtoken",wantXToken:"",wantUserID:0},
 	}
 
 	for _ , tc := range tt{
@@ -30,7 +30,7 @@ func TestGetUser(t *testing.T)  {
 		url :=  "localhost:8090/user/get/"
 		req,err := http.NewRequest("GET",url,nil)
 		//xtokenを設定
-		req.Header.Set("xToken",tc.getXToken)
+		req.Header.Set("xToken",tc.giveXToken)
 
 		if err != nil{
 			t.Fatalf("could not create request %v",err)
@@ -68,25 +68,25 @@ func TestGetUser(t *testing.T)  {
 func TestFetchGacha(t *testing.T) {
 
 	tt := []struct{
-		getXToken string
+		giveXToken string
 		wantXToken string
-		getTimes     string
+		giveTimes     string
 		expectTimes string
 	}{
-		{getXToken: "BpLnfgDsc2WD8F2qNfHK",wantXToken:"BpLnfgDsc2WD8F2qNfHK",getTimes:"1" ,expectTimes:"1"},
-		{getXToken: "BpLnfgDsc2WD8F2qNfHK",wantXToken:"BpLnfgDsc2WD8F2qNfHK",getTimes:"2" ,expectTimes:"2"},
-		{getXToken: "5a84jjJkwzDkh9h2fhfU",wantXToken:"5a84jjJkwzDkh9h2fhfU",getTimes:"1" ,expectTimes:"1"},
-		{getXToken: "5a84jjJkwzDkh9h2fhfU",wantXToken:"5a84jjJkwzDkh9h2fhfU",getTimes:"2" ,expectTimes:"2"},
-		{getXToken: "5a84jjJkwzDkh9h2fhfU",wantXToken:"5a84jjJkwzDkh9h2fhfU",getTimes:"100" ,expectTimes:"2"},
+		{giveXToken: "BpLnfgDsc2WD8F2qNfHK",wantXToken:"BpLnfgDsc2WD8F2qNfHK",giveTimes:"1" ,expectTimes:"1"},
+		{giveXToken: "BpLnfgDsc2WD8F2qNfHK",wantXToken:"BpLnfgDsc2WD8F2qNfHK",giveTimes:"2" ,expectTimes:"2"},
+		{giveXToken: "5a84jjJkwzDkh9h2fhfU",wantXToken:"5a84jjJkwzDkh9h2fhfU",giveTimes:"1" ,expectTimes:"1"},
+		{giveXToken: "5a84jjJkwzDkh9h2fhfU",wantXToken:"5a84jjJkwzDkh9h2fhfU",giveTimes:"2" ,expectTimes:"2"},
+		{giveXToken: "5a84jjJkwzDkh9h2fhfU",wantXToken:"5a84jjJkwzDkh9h2fhfU",giveTimes:"100" ,expectTimes:"2"},
 
 	}
 
 	for _ , tc := range tt{
-		req,err := http.NewRequest("GET","localhost:8090/gacha/draw/?times="+tc.getTimes,nil)
+		req,err := http.NewRequest("GET","localhost:8090/gacha/draw/?times="+tc.giveTimes,nil)
 		if err != nil{
 			t.Fatalf("could not create request %v",err)
 		}
-		req.Header.Set("xToken",tc.getXToken)
+		req.Header.Set("xToken",tc.giveXToken)
 
 		rec := httptest.NewRecorder()
 		drawGacha(rec,req)
@@ -99,7 +99,7 @@ func TestFetchGacha(t *testing.T) {
 		}
 		data, err := ioutil.ReadAll(rec.Body)
 
-		_, err = strconv.Atoi(string((bytes.TrimSpace(data))))
+		_, err = strconv.Atoi(string(bytes.TrimSpace(data)))
 
 		gacha :=  make(map[string]interface{})
 
@@ -111,7 +111,7 @@ func TestFetchGacha(t *testing.T) {
 		assert.Equal(t,
 			tc.expectTimes,
 			strconv.Itoa(len(arr)),
-			"Fetched Gacha data count is "+tc.getTimes,
+			"Fetched Gacha data count is "+tc.giveTimes,
 		)
 	}
 }

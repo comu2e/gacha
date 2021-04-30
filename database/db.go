@@ -12,7 +12,6 @@ var db *sql.DB
 func DbInit() (*sql.DB, error) {
 	var err error
 	db, err = sql.Open("mysql", "root:password@/testdb")
-
 	return db, err
 }
 
