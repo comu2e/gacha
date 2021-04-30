@@ -5,9 +5,9 @@ import (
 	"Gacha/model"
 	"encoding/json"
 	"fmt"
+	"github.com/dgrijalva/jwt-go"
 	_ "github.com/go-sql-driver/mysql"
 	"log"
-	"math/rand"
 	"net/http"
 	"strconv"
 	"strings"
@@ -40,13 +40,13 @@ func fetchXtoken(w http.ResponseWriter, req *http.Request) {
 			"message": "user data is fetched",
 		}
 		fmt.Println(output)
-		defer func() error {
-			outjson, err := json.Marshal(output)
+		defer func()  {
+			outJson, err := json.Marshal(output)
 			if err != nil {
-				return err
+				log.Println("Error:", err)
 			}
-			_, err = fmt.Fprint(w, string(outjson))
-			return err
+			_, err = fmt.Fprint(w, string(outJson))
+			log.Println("Error:", err)
 		}()
 	}
 	return
@@ -56,31 +56,37 @@ func getUser(w http.ResponseWriter, req *http.Request ){
 	xToken := req.Header.Get("xToken")
 	if len(xToken) != 0{
 		db := database.DbConn()
-		row_count := db.QueryRow("SELECT COUNT(id) as userCount FROM users WHERE xToken=?",xToken)
+		rowCount := db.QueryRow("SELECT COUNT(id) as userCount FROM users WHERE xToken=?",xToken)
 
 		type userCount struct {
 			count int
 		}
 
 		var dbCount userCount
-		row_count.Scan(&dbCount.count)
+		err := rowCount.Scan(&dbCount.count)
+		if err != nil{
+			return
+		}
 		if dbCount.count != 0 {
 			rows:= db.QueryRow("SELECT * FROM users WHERE xToken=?",xToken)
 				var user model.User
-			 	rows.Scan(&user.ID, &user.Name, &user.Firstname, &user.Lastname,
+			 	err := rows.Scan(&user.ID, &user.Name, &user.Firstname, &user.Lastname,
 			 		&user.Email, &user.Password,
 					&user.Phone, &user.UserStatus,&user.XToken)
+			if err !=nil{
+				return
+			}
 				output := map[string]interface{}{
 					"data":    user,
 					"message": "user data is fetched",
 				}
-				defer func() error {
-					outjson, err := json.Marshal(output)
+				defer func()  {
+					outJson, err := json.Marshal(output)
 					if err != nil {
-						return err
+						log.Println("Error:", err)
 					}
-					_, err = fmt.Fprint(w, string(outjson))
-					return err
+					_, err = fmt.Fprint(w, string(outJson))
+					log.Println("Error:", err)
 				}()
 		}
 	}else{
@@ -98,15 +104,14 @@ func getUser(w http.ResponseWriter, req *http.Request ){
 			},
 			"message": "user is not exist.",
 		}
-		defer func() error {
-			outjson, err := json.Marshal(output)
+		defer func()  {
+			outJson, err := json.Marshal(output)
 			if err != nil {
-				return err
+				log.Println("Error:", err)
 			}
-			_, err = fmt.Fprint(w, string(outjson))
-			http.Error(w, err.Error(), 501)
+			_, err = fmt.Fprint(w, string(outJson))
+			log.Println("Error:", err)
 
-			return err
 		}()
 	}
 
@@ -130,31 +135,35 @@ func createUser(w http.ResponseWriter, req *http.Request) {
 		err = rows.Scan(&id)
 		queryMap := req.URL.Query()
 		if queryMap == nil {
-			http.Error(w, err.Error(), 401)
+			log.Println("Error:", err)
 			return
 		}
 		valueQuery := ""
 		columnQuery := ""
+		username := ""
+		var hasUserCreated int
+
 		for k, v := range queryMap {
-			if k == "Username" {
+			if k == "Name" {
 				queryUsername := v[0]
+				username = queryUsername
 				rowsCount := db.QueryRow("SELECT count(Name) as hasUserCreated  from users where Name = ?", queryUsername)
-						var hasUserCreated int
-						err = rowsCount.Scan(&hasUserCreated)
-
-						if hasUserCreated != 0 {
-							http.Error(w, err.Error(), 401)
-						}
-				}
-				valueQuery += "\"" + v[0] + "\"" + ","
-				columnQuery += k + ","
+				err = rowsCount.Scan(&hasUserCreated)
 			}
-
+			valueQuery += "\"" + v[0] + "\"" + ","
+			columnQuery += k + ","
+		}
+		fmt.Println(hasUserCreated)
+		if hasUserCreated == 0 {
 			valueQuery += strconv.Itoa(id+1) + ","
 			columnQuery += "id" + ","
 
-			xToken := generateXToken(20)
-			valueQuery += "\"" + xToken + "\""
+			// トークン作成
+			xToken := jwt.New(jwt.SigningMethodHS256)
+			//usernameをsecret keyに設定
+			t, err := xToken.SignedString([]byte(username))
+
+			valueQuery += "\"" + t + "\""
 			columnQuery += "xToken" + ","
 
 			valueQuery = strings.TrimRight(valueQuery, ",")
@@ -164,7 +173,7 @@ func createUser(w http.ResponseWriter, req *http.Request) {
 			if err != nil {
 				//	//失敗したらロールバック
 				err = tx.Rollback()
-				http.Error(w, err.Error(), 401)
+				log.Println("Error:", err)
 				return
 			}
 			//成功したらCommit
@@ -174,41 +183,37 @@ func createUser(w http.ResponseWriter, req *http.Request) {
 				return
 			}
 			output := map[string]interface{}{
-				"x-token": xToken,
+				"x-token": t,
 				"message": "The user account was successfully created.",
 				"status":  true,
 			}
-			defer func() error {
-				outjson, err := json.Marshal(output)
+			defer func() {
+				outJson, err := json.Marshal(output)
 				if err != nil {
-					return err
+					log.Println("Error:", err)
 				}
-				_, err = fmt.Fprint(w, string(outjson))
-				return err
+				_, err = fmt.Fprint(w, string(outJson))
+				log.Println("Error:", err)
 			}()
+		}else{
+			_,err = fmt.Fprintf(w,"user has created")
+			if err != nil{
+				return
+			}
 		}
 	}
-
-func generateXToken(n int) string {
-	var letter = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
-
-	b := make([]rune, n)
-	for i := range b {
-		b[i] = letter[rand.Intn(len(letter))]
 	}
-	return string(b)
-}
-func updateUser(w http.ResponseWriter, req *http.Request) {
+
+func updateUser(_ http.ResponseWriter, req *http.Request) {
 	if req.Method == http.MethodPut {
 		db := database.DbConn()
 
 		//transactionの開始
-		tx, err := db.Begin()
+		tx, _ := db.Begin()
 		//auto incrementで追加
 		queryMap := req.URL.Query()
 		if queryMap == nil {
-			http.Error(w, err.Error(), 401)
-			return
+			log.Println("Error:Query is not exist." )
 		}
 		xToken := req.Header.Get("xToken")
 		setQuery := ""
@@ -218,21 +223,17 @@ func updateUser(w http.ResponseWriter, req *http.Request) {
 			}
 		}
 		setQuery = strings.TrimRight(setQuery, ",")
-		fmt.Println(setQuery)
+		_,_ =  fmt.Println(setQuery)
+
 		query := "UPDATE users SET " + setQuery + " WHERE xToken = " + xToken
 
 		tx.QueryRow(query)
-		if err != nil {
-			err = tx.Rollback()
-			http.Error(w, err.Error(), 401)
-			return
-		}
 
 		_ = tx.Commit()
 	}
 	return
 }
-func deleteUser(w http.ResponseWriter, req *http.Request) {
+func deleteUser(_ http.ResponseWriter, req *http.Request) {
 	if req.Method == http.MethodDelete {
 		db := database.DbConn()
 		tx,err := db.Begin()
@@ -241,15 +242,18 @@ func deleteUser(w http.ResponseWriter, req *http.Request) {
 		if len(xToken) != 0{
 			tx.QueryRow("DELETE FROM users where xToken = ?", xToken)
 			if err != nil {
-				http.Error(w, err.Error(), 401)
-				_ = tx.Rollback()
+				log.Println("Error:", err)
+				err = tx.Rollback()
+				if err != nil {
+					log.Println("Error:", err)
+				}
 			}
 			err = tx.Commit()
 			if err != nil {
-				http.Error(w, err.Error(), 401)
+				log.Println("Error:", err)
 			}
 		} else {
-			http.Error(w, err.Error(), 501)
+			log.Println("Error:", err)
 		}
 	}
 }
@@ -267,37 +271,46 @@ func drawGacha(w http.ResponseWriter,req *http.Request) {
 			drawTimes := queryMap["times"][0]
 			rows  := db.QueryRow("SELECT id FROM users where xToken = ?", xToken)
 
-			var user_id string
-			rows.Scan(&user_id)
-
+			var userId string
+			err := rows.Scan(&userId)
+			if err != nil {
+				return
+			}
 			rows = db.QueryRow("SELECT name,id FROM characters ORDER BY RAND() LIMIT ?", drawTimes)
 
-			characters := []model.Character{}
+			var characters []model.Character
 			insertQuery := "INSERT INTO user_character (user_id,character_id) VALUES "
 
 			var character model.Character
 
-			rows.Scan(&character.Name, &character.ID)
+			err =  rows.Scan(&character.Name, &character.ID)
+			if err != nil {
+				return
+			}
 			characters = append(characters, character)
-			insertQuery += "(" + user_id + "," + strconv.FormatInt(character.ID, 10) + "),"
+			insertQuery += "(" + userId + "," + strconv.FormatInt(character.ID, 10) + "),"
 			insertQuery = strings.TrimRight(insertQuery, ",")
 			insertQuery += ";"
-			db.Query(insertQuery)
+			db.QueryRow(insertQuery)
 
 			output := map[string]interface{}{
 				"data":    characters,
 				"message": "character data is fetched",
 			}
-			defer func() error {
-				outjson, err := json.Marshal(output)
+			defer func()  {
+				outJson, err := json.Marshal(output)
 				if err != nil {
-					return err
+					log.Println("can't close !!", err)
 				}
-				_, err = fmt.Fprint(w, string(outjson))
-				return err
+				_, err = fmt.Fprint(w, string(outJson))
+				log.Println("can't close body!!", err)
+
 			}()
 		}else{
-			fmt.Fprintf(w,"xToken is not setting")
+			_,err := fmt.Fprintf(w,"xToken is not setting")
+			if err != nil {
+				log.Println("Error:", err)
+			}
 		}
 	}
 }
@@ -311,36 +324,39 @@ func getCharacterList(w http.ResponseWriter, res *http.Request) {
 		if queryMap == nil {
 			return
 		}
-		user_id := queryMap["user_id"][0]
-		rows := db.QueryRow("SELECT character_id FROM user_character where user_id = ?", user_id)
-		characters := []model.Character{}
+		userId := queryMap["user_id"][0]
+		rows := db.QueryRow("SELECT character_id FROM user_character where user_id = ?", userId)
+		var characters []model.Character
 		var character model.Character
 
-		 rows.Scan(&character.ID)
+		err := rows.Scan(&character.ID)
+		if err != nil {
+			return
+		}
 		characters = append(characters, character)
 
 		output := map[string]interface{}{
 			"data":    characters,
 			"message": "character data",
 		}
-		defer func() error {
-			outjson, err := json.Marshal(output)
+		defer func()  {
+			outJson, err := json.Marshal(output)
 			if err != nil {
-				return err
+				log.Println("Error:", err)
 			}
-			_, err = fmt.Fprint(w, string(outjson))
-			return err
+			_, err = fmt.Fprint(w, string(outJson))
+			log.Println("Error:", err)
 		}()
 	}
 }
 
 func RequestLog(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		t_start := time.Now()
+		tStart := time.Now()
 		next.ServeHTTP(w, r)
-		t_end := time.Now()
+		tEnd := time.Now()
 
-		log.Printf("[%s] %q %v\n", r.Method, r.URL.String(), t_end.Sub(t_start))
+		log.Printf("[%s] %q %v\n", r.Method, r.URL.String(), tEnd.Sub(tStart))
 	}
 }
 func setHeaderMiddleWare(next http.HandlerFunc,method string) http.HandlerFunc {
