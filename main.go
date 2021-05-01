@@ -271,26 +271,30 @@ func drawGacha(w http.ResponseWriter,req *http.Request) {
 				return
 			}
 			drawTimes := queryMap["times"][0]
-			rows  := db.QueryRow("SELECT id FROM users where xToken = ?", xToken)
+			row  := db.QueryRow("SELECT id FROM users where xToken = ?", xToken)
 
 			var userId string
-			err := rows.Scan(&userId)
+			err := row.Scan(&userId)
 			if err != nil {
 				return
 			}
-			rows = db.QueryRow("SELECT name,id FROM characters ORDER BY RAND() LIMIT ?",drawTimes)
 
 			var characters []model.Character
 			insertQuery := "INSERT INTO user_character (user_id,character_id) VALUES "
 
-			var character model.Character
-
-			err =  rows.Scan(&character.Name, &character.ID)
+			rows,err := db.Query("SELECT name,id FROM characters ORDER BY RAND() LIMIT ?",drawTimes)
 			if err != nil {
 				return
 			}
-			characters = append(characters, character)
-			insertQuery += "(" + userId + "," + strconv.FormatInt(character.ID, 10) + "),"
+			for rows.Next() {
+				var character model.Character
+				err =  rows.Scan(&character.Name, &character.ID)
+				if err != nil {
+					return
+				}
+				characters = append(characters, character)
+				insertQuery += "(" + userId + "," + strconv.FormatInt(character.ID, 10) + "),"
+			}
 			insertQuery = strings.TrimRight(insertQuery, ",")
 			insertQuery += ";"
 			db.QueryRow(insertQuery)
@@ -302,10 +306,10 @@ func drawGacha(w http.ResponseWriter,req *http.Request) {
 			defer func()  {
 				outJson, err := json.Marshal(output)
 				if err != nil {
-					log.Println("can't close !!", err)
+					log.Println("Error: !!", err)
 				}
 				_, err = fmt.Fprint(w, string(outJson))
-				log.Println("can't close body!!", err)
+				log.Println("Error:", err)
 
 			}()
 		}else{
@@ -327,15 +331,20 @@ func getCharacterList(w http.ResponseWriter, res *http.Request) {
 			return
 		}
 		userId := queryMap["user_id"][0]
-		rows := db.QueryRow("SELECT character_id FROM user_character where user_id = ?", userId)
+		rows,err := db.Query("SELECT character_id FROM user_character where user_id = ?", userId)
 		var characters []model.Character
 		var character model.Character
-
-		err := rows.Scan(&character.ID)
-		if err != nil {
+		if err !=  nil {
 			return
 		}
-		characters = append(characters, character)
+		for rows.Next() {
+			err := rows.Scan(&character.ID)
+			if err != nil {
+				return
+			}
+			characters = append(characters, character)
+
+		}
 
 		output := map[string]interface{}{
 			"data":    characters,
