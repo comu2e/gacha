@@ -302,7 +302,9 @@ func drawGacha(w http.ResponseWriter,req *http.Request) {
 				"message": "character data is fetched",
 			}
 			defer func()  {
+
 				outJson, err := json.Marshal(output)
+
 				if err != nil {
 					log.Println("Error: !!", err)
 				}
@@ -331,33 +333,39 @@ func getCharacterList(w http.ResponseWriter, req *http.Request) {
 		var userID string
 		_ = row.Scan(&userID)
 		fmt.Println(userID)
+		query = "SELECT user_id,character_id,count(character_id) as character_count " +
+			"FROM user_character where user_id="+userID +" GROUP BY character_id"
+		fmt.Println(query)
+		rows,err := db.Query(query)
 
-		rows,err := db.Query("SELECT * FROM characters WHERE id IN (SELECT character_id FROM user_character WHERE user_id = ?)", userID)
-		var characters []model.Character
-		var character model.Character
+		var characterUsers []model.CharacterUser
+
 		if err !=  nil {
 			return
 		}
 		for rows.Next() {
-			err := rows.Scan(&character.Name,&character.ID)
+			var characterUser model.CharacterUser
+			err := rows.Scan(&characterUser.User_id,&characterUser.Character_id,&characterUser.Character_count)
 			if err != nil {
 				return
 			}
-			fmt.Println(character.ID)
-			fmt.Println(character.Name)
-			characters = append(characters, character)
-
+			characterUsers = append(characterUsers,characterUser)
 		}
-
+		fmt.Println("+++")
+		fmt.Println(characterUsers)
+		fmt.Println("+++")
 		output := map[string]interface{}{
-			"data":    characters,
-			"message": "character data",
+			"data":characterUsers,
+			"message": "characters data",
 		}
+		fmt.Println(output)
 		defer func()  {
 			outJson, err := json.Marshal(output)
+
 			if err != nil {
 				log.Println("Error:", err)
 			}
+			fmt.Println(string(outJson))
 			_, err = fmt.Fprint(w, string(outJson))
 			log.Println("Error:", err)
 		}()
@@ -380,6 +388,7 @@ func setHeaderMiddleWare(next http.HandlerFunc,method string) http.HandlerFunc {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Access-Control-Allow-Methods", method)
 		next.ServeHTTP(w, r)
+		fmt.Println(w.Header().Get("Access-Control-Allow-Origin"))
 
 	}
 }
