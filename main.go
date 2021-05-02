@@ -258,9 +258,7 @@ func deleteUser(_ http.ResponseWriter, req *http.Request) {
 	}
 }
 func drawGacha(w http.ResponseWriter,req *http.Request) {
-	w.Header().Set("content-Type", "application/json")
-	w.Header().Set("Access-Control-Allow-Headers", "*")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
+
 	if req.Method == http.MethodGet {
 		xToken := req.Header.Get("xToken")
 		if len(xToken) != 0 {
@@ -271,26 +269,30 @@ func drawGacha(w http.ResponseWriter,req *http.Request) {
 				return
 			}
 			drawTimes := queryMap["times"][0]
-			rows  := db.QueryRow("SELECT id FROM users where xToken = ?", xToken)
+			row  := db.QueryRow("SELECT id FROM users where xToken = ?", xToken)
 
 			var userId string
-			err := rows.Scan(&userId)
+			err := row.Scan(&userId)
 			if err != nil {
 				return
 			}
-			rows = db.QueryRow("SELECT name,id FROM characters ORDER BY RAND() LIMIT ?",drawTimes)
 
 			var characters []model.Character
 			insertQuery := "INSERT INTO user_character (user_id,character_id) VALUES "
 
-			var character model.Character
-
-			err =  rows.Scan(&character.Name, &character.ID)
+			rows,err := db.Query("SELECT name,id FROM characters ORDER BY RAND() LIMIT ?",drawTimes)
 			if err != nil {
 				return
 			}
-			characters = append(characters, character)
-			insertQuery += "(" + userId + "," + strconv.FormatInt(character.ID, 10) + "),"
+			for rows.Next() {
+				var character model.Character
+				err =  rows.Scan(&character.Name, &character.ID)
+				if err != nil {
+					return
+				}
+				characters = append(characters, character)
+				insertQuery += "(" + userId + "," + strconv.FormatInt(character.ID, 10) + "),"
+			}
 			insertQuery = strings.TrimRight(insertQuery, ",")
 			insertQuery += ";"
 			db.QueryRow(insertQuery)
@@ -300,12 +302,14 @@ func drawGacha(w http.ResponseWriter,req *http.Request) {
 				"message": "character data is fetched",
 			}
 			defer func()  {
+
 				outJson, err := json.Marshal(output)
+
 				if err != nil {
-					log.Println("can't close !!", err)
+					log.Println("Error: !!", err)
 				}
 				_, err = fmt.Fprint(w, string(outJson))
-				log.Println("can't close body!!", err)
+				log.Println("Error:", err)
 
 			}()
 		}else{
@@ -316,36 +320,50 @@ func drawGacha(w http.ResponseWriter,req *http.Request) {
 		}
 	}
 }
-func getCharacterList(w http.ResponseWriter, res *http.Request) {
+func getCharacterList(w http.ResponseWriter, req *http.Request) {
 
-	if res.Method == http.MethodGet {
+	if req.Method == http.MethodGet {
 
 		db := database.DbConn()
+		xToken := req.Header.Get("xToken")
+		query := "SELECT id as userID FROM users WHERE xToken = " + "\""+xToken +"\""
+		fmt.Println(query)
+		row := db.QueryRow(query)
 
-		queryMap := res.URL.Query()
-		if queryMap == nil {
+		var userID string
+		_ = row.Scan(&userID)
+		fmt.Println(userID)
+		query = "SELECT character_id,name,count(character_id) as character_count " +
+			"FROM characters JOIN user_character uc on characters.id = uc.character_id WHERE user_id =" +userID +
+			" GROUP BY characters.id order by character_id asc"
+		fmt.Println(query)
+		rows,err := db.Query(query)
+
+		var characterUsers []model.CharacterUser
+
+		if err !=  nil {
 			return
 		}
-		userId := queryMap["user_id"][0]
-		rows := db.QueryRow("SELECT character_id FROM user_character where user_id = ?", userId)
-		var characters []model.Character
-		var character model.Character
-
-		err := rows.Scan(&character.ID)
-		if err != nil {
-			return
+		for rows.Next() {
+			var characterUser model.CharacterUser
+			err := rows.Scan(&characterUser.CharacterID,&characterUser.Name,&characterUser.Character_count)
+			if err != nil {
+				return
+			}
+			characterUsers = append(characterUsers,characterUser)
 		}
-		characters = append(characters, character)
 
 		output := map[string]interface{}{
-			"data":    characters,
-			"message": "character data",
+			"data":characterUsers,
+			"message": "characters data",
 		}
 		defer func()  {
 			outJson, err := json.Marshal(output)
+
 			if err != nil {
 				log.Println("Error:", err)
 			}
+			fmt.Println(string(outJson))
 			_, err = fmt.Fprint(w, string(outJson))
 			log.Println("Error:", err)
 		}()
@@ -368,6 +386,7 @@ func setHeaderMiddleWare(next http.HandlerFunc,method string) http.HandlerFunc {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Access-Control-Allow-Methods", method)
 		next.ServeHTTP(w, r)
+		fmt.Println(w.Header().Get("Access-Control-Allow-Origin"))
 
 	}
 }
