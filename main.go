@@ -332,17 +332,19 @@ func getCharacterList(w http.ResponseWriter, req *http.Request) {
 		_ = row.Scan(&userID)
 		fmt.Println(userID)
 
-		rows,err := db.Query("SELECT character_id FROM user_character where user_id = ?", userID)
+		rows,err := db.Query("SELECT * FROM characters WHERE id IN (SELECT character_id FROM user_character WHERE user_id = ?)", userID)
 		var characters []model.Character
 		var character model.Character
 		if err !=  nil {
 			return
 		}
 		for rows.Next() {
-			err := rows.Scan(&character.ID)
+			err := rows.Scan(&character.Name,&character.ID)
 			if err != nil {
 				return
 			}
+			fmt.Println(character.ID)
+			fmt.Println(character.Name)
 			characters = append(characters, character)
 
 		}
