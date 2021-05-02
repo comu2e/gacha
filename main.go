@@ -258,9 +258,7 @@ func deleteUser(_ http.ResponseWriter, req *http.Request) {
 	}
 }
 func drawGacha(w http.ResponseWriter,req *http.Request) {
-	w.Header().Set("content-Type", "application/json")
-	w.Header().Set("Access-Control-Allow-Headers", "*")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
+
 	if req.Method == http.MethodGet {
 		xToken := req.Header.Get("xToken")
 		if len(xToken) != 0 {
@@ -320,18 +318,21 @@ func drawGacha(w http.ResponseWriter,req *http.Request) {
 		}
 	}
 }
-func getCharacterList(w http.ResponseWriter, res *http.Request) {
+func getCharacterList(w http.ResponseWriter, req *http.Request) {
 
-	if res.Method == http.MethodGet {
+	if req.Method == http.MethodGet {
 
 		db := database.DbConn()
+		xToken := req.Header.Get("xToken")
+		query := "SELECT id as userID FROM users WHERE xToken = " + "\""+xToken +"\""
+		fmt.Println(query)
+		row := db.QueryRow(query)
 
-		queryMap := res.URL.Query()
-		if queryMap == nil {
-			return
-		}
-		userId := queryMap["user_id"][0]
-		rows,err := db.Query("SELECT character_id FROM user_character where user_id = ?", userId)
+		var userID string
+		_ = row.Scan(&userID)
+		fmt.Println(userID)
+
+		rows,err := db.Query("SELECT character_id FROM user_character where user_id = ?", userID)
 		var characters []model.Character
 		var character model.Character
 		if err !=  nil {
