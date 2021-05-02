@@ -333,8 +333,9 @@ func getCharacterList(w http.ResponseWriter, req *http.Request) {
 		var userID string
 		_ = row.Scan(&userID)
 		fmt.Println(userID)
-		query = "SELECT user_id,character_id,count(character_id) as character_count " +
-			"FROM user_character where user_id="+userID +" GROUP BY character_id"
+		query = "SELECT character_id,name,count(character_id) as character_count " +
+			"FROM characters JOIN user_character uc on characters.id = uc.character_id WHERE user_id =" +userID +
+			" GROUP BY characters.id order by character_id asc"
 		fmt.Println(query)
 		rows,err := db.Query(query)
 
@@ -345,20 +346,17 @@ func getCharacterList(w http.ResponseWriter, req *http.Request) {
 		}
 		for rows.Next() {
 			var characterUser model.CharacterUser
-			err := rows.Scan(&characterUser.User_id,&characterUser.Character_id,&characterUser.Character_count)
+			err := rows.Scan(&characterUser.CharacterID,&characterUser.Name,&characterUser.Character_count)
 			if err != nil {
 				return
 			}
 			characterUsers = append(characterUsers,characterUser)
 		}
-		fmt.Println("+++")
-		fmt.Println(characterUsers)
-		fmt.Println("+++")
+
 		output := map[string]interface{}{
 			"data":characterUsers,
 			"message": "characters data",
 		}
-		fmt.Println(output)
 		defer func()  {
 			outJson, err := json.Marshal(output)
 
