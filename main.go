@@ -386,7 +386,7 @@ func setHeaderMiddleWare(next http.HandlerFunc,method string) http.HandlerFunc {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Access-Control-Allow-Methods", method)
 		next.ServeHTTP(w, r)
-		fmt.Println(w.Header().Get("Access-Control-Allow-Origin"))
+		fmt.Println(w.Header().Get("Access-Control-Allow-Methods"))
 
 	}
 }
