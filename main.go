@@ -393,7 +393,7 @@ func setHeaderMiddleWare(next http.HandlerFunc,method string) http.HandlerFunc {
 
 func main(){
 	_, err := database.DbInit()
-	if err != nil {
+	if recover();err != nil {
 		panic(err)
 	}
 	defer database.DbClose()
