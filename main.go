@@ -25,21 +25,18 @@ func fetchXtoken(w http.ResponseWriter, req *http.Request) {
 		userName := queryMap["Name"][0]
 		passWord := queryMap["Password"][0]
 
-		querySQL := fmt.Sprintf("SELECT xToken from users where Name = \"%s\" and Password = \"%s\" LIMIT 1", userName, passWord)
-		fmt.Println(querySQL)
+		querySQL := fmt.Sprintf("SELECT xToken FROM users WHERE Name = \"%s\"  AND Password = \"%s\" LIMIT 1", userName, passWord)
 		db := database.DbConn()
 
 		rows := db.QueryRow(querySQL)
 
 		var user model.User
 		_ = rows.Scan(&user.XToken)
-		fmt.Println(user.XToken)
 		output := map[string]interface{}{
 			"data":    user.XToken,
 			"status":  true,
 			"message": "user data is fetched",
 		}
-		fmt.Println(output)
 		defer func()  {
 			outJson, err := json.Marshal(output)
 			if err != nil {
@@ -153,7 +150,6 @@ func createUser(w http.ResponseWriter, req *http.Request) {
 			valueQuery += "\"" + v[0] + "\"" + ","
 			columnQuery += k + ","
 		}
-		fmt.Println(hasUserCreated)
 		if hasUserCreated == 0 {
 			valueQuery += strconv.Itoa(id+1) + ","
 			columnQuery += "id" + ","
@@ -223,7 +219,6 @@ func updateUser(_ http.ResponseWriter, req *http.Request) {
 			}
 		}
 		setQuery = strings.TrimRight(setQuery, ",")
-		_,_ =  fmt.Println(setQuery)
 
 		query := "UPDATE users SET " + setQuery + " WHERE xToken = " + xToken
 
@@ -327,16 +322,13 @@ func getCharacterList(w http.ResponseWriter, req *http.Request) {
 		db := database.DbConn()
 		xToken := req.Header.Get("xToken")
 		query := "SELECT id as userID FROM users WHERE xToken = " + "\""+xToken +"\""
-		fmt.Println(query)
 		row := db.QueryRow(query)
 
 		var userID string
 		_ = row.Scan(&userID)
-		fmt.Println(userID)
 		query = "SELECT character_id,name,count(character_id) as character_count " +
 			"FROM characters JOIN user_character uc on characters.id = uc.character_id WHERE user_id =" +userID +
 			" GROUP BY characters.id order by character_id asc"
-		fmt.Println(query)
 		rows,err := db.Query(query)
 
 		var characterUsers []model.CharacterUser
@@ -363,7 +355,6 @@ func getCharacterList(w http.ResponseWriter, req *http.Request) {
 			if err != nil {
 				log.Println("Error:", err)
 			}
-			fmt.Println(string(outJson))
 			_, err = fmt.Fprint(w, string(outJson))
 			log.Println("Error:", err)
 		}()
@@ -386,7 +377,6 @@ func setHeaderMiddleWare(next http.HandlerFunc,method string) http.HandlerFunc {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Access-Control-Allow-Methods", method)
 		next.ServeHTTP(w, r)
-		fmt.Println(w.Header().Get("Access-Control-Allow-Methods"))
 
 	}
 }

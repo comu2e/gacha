@@ -14,6 +14,52 @@ import (
 	"testing"
 )
 
+func TestFetchXtoken(t *testing.T) {
+	_, err := database.DbInit()
+	if recover();err != nil {
+		panic(err)
+	}
+	defer database.DbClose()
+
+	tt := []struct{
+		giveUsername string
+		givePassword string
+		wantToken string
+	}{
+		{giveUsername: "test",givePassword: "password",wantToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.P4Lqll22jQQJ1eMJikvNg5HKG-cKB0hUZA9BZFIG7Jk"},
+	}
+
+	for _,tc := range tt {
+		//arrange
+		query := "?Name="+tc.giveUsername+"&Password="+tc.givePassword
+		url :=  "localhost:8090/user/fetch/"
+		req, _ := http.NewRequest("GET",url+query,nil)
+		//act
+		rec := httptest.NewRecorder()
+		fetchXtoken(rec,req)
+
+		res := rec.Result()
+		defer res.Body.Close()
+
+		if res.StatusCode != http.StatusOK {
+			t.Errorf("Expected status OK:got %v",res.Status)
+		}
+		data,  _ := ioutil.ReadAll(rec.Body)
+
+		_, err = strconv.Atoi(string(bytes.TrimSpace(data)))
+		gacha :=  make(map[string]interface{})
+
+		if err := json.Unmarshal(data, &gacha); err != nil {
+			log.Fatal(err)
+		}
+		//assertion
+		//token が得られているか確認する
+		assert.Equal(t,
+			tc.wantToken,
+			gacha["data"],
+		)
+	}
+}
 func TestGetUser(t *testing.T)  {
 	_, err := database.DbInit()
 	if err != nil {
@@ -81,7 +127,10 @@ func TestFetchGacha(t *testing.T) {
 		giveTimes     string
 		expectTimes string
 	}{
-		{giveXToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.efjmScJd31_IesdVdNsnd0i1jHE9rqAi28PXOMeSWLI",wantXToken:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.efjmScJd31_IesdVdNsnd0i1jHE9rqAi28PXOMeSWLI",giveTimes:"1" ,expectTimes:"1"},
+		{
+			giveXToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.efjmScJd31_IesdVdNsnd0i1jHE9rqAi28PXOMeSWLI",
+			wantXToken:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.efjmScJd31_IesdVdNsnd0i1jHE9rqAi28PXOMeSWLI",
+			giveTimes:"1" ,expectTimes:"1"},
 	}
 
 	for _ , tc := range tt{
@@ -131,7 +180,11 @@ type userTest struct {
 
 //
 //func TestCreateUser(t *testing.T) {
-//
+//	_, err := database.DbInit()
+//	if recover();err != nil {
+//		panic(err)
+//	}
+//	defer database.DbClose()
 //	tt := []struct {
 //		inputUser userTest
 //		wanUser userTest
@@ -162,7 +215,7 @@ type userTest struct {
 //		for i := 0; i < length_userForm; i++ {
 //			query += tc.inputUser.
 //		}
-//		req,err := http.NewRequest("GET","localhost:8090/create/?times="+tc.getUser,nil)
+//		req,err := http.NewRequest("GET","localhost:8090/create/?times="+tc.,nil)
 //		if err != nil{
 //			t.Fatalf("could not create request %v",err)
 //		}
