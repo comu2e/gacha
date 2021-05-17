@@ -1,0 +1,36 @@
+version: "3"
+services:
+  mysql:
+    container_name: mysql
+    build:
+       context: ./mysql
+       dockerfile: db.Dockerfile
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: testdb
+      MYSQL_USER: docker
+      MYSQL_PASSWORD: docker
+      TZ: 'Asia/Tokyo'
+#      日本語文字化け対策
+    command: mysqld --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    volumes:
+#      - 初期設定読み込み
+      - ./mysql/my.cnf:/etc/mysql/conf.d/my.cnf
+      - ./mysql/data:/var/lib/mysql
+      - ./mysql/init/:/docker-entrypoint-initdb.d
+
+    ports:
+        - "3306:3306"
+  app:
+    depends_on:
+      - mysql
+    container_name: main_go
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    command: "sh ./start_app.sh    tty: true"
+
+    ports:
+    - "8090:8090"
+    volumes:
+      - ..:/go/src/Gacha
