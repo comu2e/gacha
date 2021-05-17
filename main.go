@@ -381,7 +381,7 @@ func setHeaderMiddleWare(next http.HandlerFunc,method string) http.HandlerFunc {
 }
 
 func main(){
-	const  dbName = "root:password@/testdb"
+	const  dbName = "root:password@/maindb"
 
 	_, err := database.DbInit(dbName)
 	if recover();err != nil {
