@@ -199,7 +199,6 @@ func createUser(w http.ResponseWriter, req *http.Request) {
 		}
 	}
 	}
-
 func updateUser(_ http.ResponseWriter, req *http.Request) {
 	if req.Method == http.MethodPut {
 		db := database.DbConn()
@@ -382,7 +381,9 @@ func setHeaderMiddleWare(next http.HandlerFunc,method string) http.HandlerFunc {
 }
 
 func main(){
-	_, err := database.DbInit()
+	const  dbName = "root:password@/testdb"
+
+	_, err := database.DbInit(dbName)
 	if recover();err != nil {
 		panic(err)
 	}

@@ -9,9 +9,9 @@ var db *sql.DB
 
 // データベースに接続する
 
-func DbInit() (*sql.DB, error) {
+func DbInit(dbName string) (*sql.DB,error) {
 	var err error
-	db, err = sql.Open("mysql", "root:password@/testdb")
+	db, err = sql.Open("mysql", dbName)
 	return db, err
 }
 
