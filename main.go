@@ -25,21 +25,18 @@ func fetchXtoken(w http.ResponseWriter, req *http.Request) {
 		userName := queryMap["Name"][0]
 		passWord := queryMap["Password"][0]
 
-		querySQL := fmt.Sprintf("SELECT xToken from users where Name = \"%s\" and Password = \"%s\" LIMIT 1", userName, passWord)
-		fmt.Println(querySQL)
+		querySQL := fmt.Sprintf("SELECT xToken FROM users WHERE Name = \"%s\"  AND Password = \"%s\" LIMIT 1", userName, passWord)
 		db := database.DbConn()
 
 		rows := db.QueryRow(querySQL)
 
 		var user model.User
 		_ = rows.Scan(&user.XToken)
-		fmt.Println(user.XToken)
 		output := map[string]interface{}{
 			"data":    user.XToken,
 			"status":  true,
 			"message": "user data is fetched",
 		}
-		fmt.Println(output)
 		defer func()  {
 			outJson, err := json.Marshal(output)
 			if err != nil {
@@ -153,7 +150,6 @@ func createUser(w http.ResponseWriter, req *http.Request) {
 			valueQuery += "\"" + v[0] + "\"" + ","
 			columnQuery += k + ","
 		}
-		fmt.Println(hasUserCreated)
 		if hasUserCreated == 0 {
 			valueQuery += strconv.Itoa(id+1) + ","
 			columnQuery += "id" + ","
@@ -203,7 +199,6 @@ func createUser(w http.ResponseWriter, req *http.Request) {
 		}
 	}
 	}
-
 func updateUser(_ http.ResponseWriter, req *http.Request) {
 	if req.Method == http.MethodPut {
 		db := database.DbConn()
@@ -223,7 +218,6 @@ func updateUser(_ http.ResponseWriter, req *http.Request) {
 			}
 		}
 		setQuery = strings.TrimRight(setQuery, ",")
-		_,_ =  fmt.Println(setQuery)
 
 		query := "UPDATE users SET " + setQuery + " WHERE xToken = " + xToken
 
@@ -320,6 +314,76 @@ func drawGacha(w http.ResponseWriter,req *http.Request) {
 		}
 	}
 }
+func createCharacter(w http.ResponseWriter,req *http.Request) {
+	password := req.Header.Get("xToken")
+	if password  == "root"{
+	if req.Method == http.MethodPut {
+			db := database.DbConn()
+			queryMap := req.URL.Query()
+			if queryMap == nil {
+				return
+			}
+			characterName := queryMap["characterName"][0]
+			query := "INSERT INTO characters(name) value (\""+characterName+"\")"
+			db.QueryRow(query)
+			log.Print(query)
+			output := map[string]interface{}{
+				"data":   characterName ,
+				"message": "character data is craeted",
+			}
+			defer func()  {
+
+				outJson, err := json.Marshal(output)
+
+				if err != nil {
+					log.Println("Error: !!", err)
+				}
+				_, err = fmt.Fprint(w, string(outJson))
+				log.Println("Error:", err)
+
+			}()
+		}
+	}else {
+		log.Print("Not allowed delete")
+
+		fmt.Fprintln(w,"You are not allowed to create")
+	}
+}
+func deleteCharacter(w http.ResponseWriter,req *http.Request) {
+	password := req.Header.Get("xToken")
+	if password  == "root"{
+		if req.Method == http.MethodDelete {
+			db := database.DbConn()
+			queryMap := req.URL.Query()
+			if queryMap == nil {
+				return
+			}
+			id := queryMap["id"][0]
+			//cascadeは使わない
+			db.QueryRow("DELETE FROM characters where id = ?", id)
+
+			output := map[string]interface{}{
+				"data":   id ,
+				"message": "character data is deleted",
+			}
+			defer func()  {
+
+				outJson, err := json.Marshal(output)
+
+				if err != nil {
+					log.Println("Error: !!", err)
+				}
+				_, err = fmt.Fprint(w, string(outJson))
+				log.Println("Error:", err)
+
+			}()
+		}
+	}else{
+		log.Print("Not allowed delete")
+	fmt.Fprintln(w,"You are not allowed to change")
+	}
+
+}
 func getCharacterList(w http.ResponseWriter, req *http.Request) {
 
 	if req.Method == http.MethodGet {
@@ -327,16 +391,13 @@ func getCharacterList(w http.ResponseWriter, req *http.Request) {
 		db := database.DbConn()
 		xToken := req.Header.Get("xToken")
 		query := "SELECT id as userID FROM users WHERE xToken = " + "\""+xToken +"\""
-		fmt.Println(query)
 		row := db.QueryRow(query)
 
 		var userID string
 		_ = row.Scan(&userID)
-		fmt.Println(userID)
 		query = "SELECT character_id,name,count(character_id) as character_count " +
 			"FROM characters JOIN user_character uc on characters.id = uc.character_id WHERE user_id =" +userID +
 			" GROUP BY characters.id order by character_id asc"
-		fmt.Println(query)
 		rows,err := db.Query(query)
 
 		var characterUsers []model.CharacterUser
@@ -363,7 +424,6 @@ func getCharacterList(w http.ResponseWriter, req *http.Request) {
 			if err != nil {
 				log.Println("Error:", err)
 			}
-			fmt.Println(string(outJson))
 			_, err = fmt.Fprint(w, string(outJson))
 			log.Println("Error:", err)
 		}()
@@ -386,13 +446,14 @@ func setHeaderMiddleWare(next http.HandlerFunc,method string) http.HandlerFunc {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Access-Control-Allow-Methods", method)
 		next.ServeHTTP(w, r)
-		fmt.Println(w.Header().Get("Access-Control-Allow-Methods"))
 
 	}
 }
 
 func main(){
-	_, err := database.DbInit()
+	const  dbName = "root:password@/maindb"
+
+	_, err := database.DbInit(dbName)
 	if recover();err != nil {
 		panic(err)
 	}
@@ -405,6 +466,8 @@ func main(){
 	mux.HandleFunc("/user/update/",RequestLog(setHeaderMiddleWare(updateUser,  "PUT")))
 	mux.HandleFunc("/user/delete/",RequestLog(setHeaderMiddleWare(deleteUser,  "DELETE")))
 	mux.HandleFunc("/gacha/draw/", RequestLog(setHeaderMiddleWare(drawGacha,    "GET")))
+	mux.HandleFunc("/character/create/", RequestLog(setHeaderMiddleWare(createCharacter,    "PUT")))
+	mux.HandleFunc("/character/delete/", RequestLog(setHeaderMiddleWare(deleteCharacter,    "DELETE")))
 	mux.HandleFunc("/character/list/", RequestLog(setHeaderMiddleWare(getCharacterList, "GET")))
 	if err := http.ListenAndServe(":8090", mux); err != nil {
 		log.Fatal(err)
