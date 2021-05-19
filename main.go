@@ -315,6 +315,8 @@ func drawGacha(w http.ResponseWriter,req *http.Request) {
 	}
 }
 func createCharacter(w http.ResponseWriter,req *http.Request) {
+	password := req.Header.Get("xToken")
+	if password  == "root"{
 	if req.Method == http.MethodPut {
 			db := database.DbConn()
 			queryMap := req.URL.Query()
@@ -341,9 +343,16 @@ func createCharacter(w http.ResponseWriter,req *http.Request) {
 
 			}()
 		}
+	}else {
+		log.Print("Not allowed delete")
+
+		fmt.Fprintln(w,"You are not allowed to create")
+	}
 }
 func deleteCharacter(w http.ResponseWriter,req *http.Request) {
-	if req.Method == http.MethodDelete {
+	password := req.Header.Get("xToken")
+	if password  == "root"{
+		if req.Method == http.MethodDelete {
 			db := database.DbConn()
 			queryMap := req.URL.Query()
 			if queryMap == nil {
@@ -369,6 +378,11 @@ func deleteCharacter(w http.ResponseWriter,req *http.Request) {
 
 			}()
 		}
+	}else{
+		log.Print("Not allowed delete")
+	fmt.Fprintln(w,"You are not allowed to change")
+	}
+
 }
 func getCharacterList(w http.ResponseWriter, req *http.Request) {
 
