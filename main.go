@@ -314,6 +314,62 @@ func drawGacha(w http.ResponseWriter,req *http.Request) {
 		}
 	}
 }
+func createCharacter(w http.ResponseWriter,req *http.Request) {
+	if req.Method == http.MethodPut {
+			db := database.DbConn()
+			queryMap := req.URL.Query()
+			if queryMap == nil {
+				return
+			}
+			characterName := queryMap["characterName"][0]
+			query := "INSERT INTO characters(name) value (\""+characterName+"\")"
+			db.QueryRow(query)
+			log.Print(query)
+			output := map[string]interface{}{
+				"data":   characterName ,
+				"message": "character data is craeted",
+			}
+			defer func()  {
+
+				outJson, err := json.Marshal(output)
+
+				if err != nil {
+					log.Println("Error: !!", err)
+				}
+				_, err = fmt.Fprint(w, string(outJson))
+				log.Println("Error:", err)
+
+			}()
+		}
+}
+func deleteCharacter(w http.ResponseWriter,req *http.Request) {
+	if req.Method == http.MethodDelete {
+			db := database.DbConn()
+			queryMap := req.URL.Query()
+			if queryMap == nil {
+				return
+			}
+			id := queryMap["id"][0]
+			//cascadeは使わない
+			db.QueryRow("DELETE FROM characters where id = ?", id)
+
+			output := map[string]interface{}{
+				"data":   id ,
+				"message": "character data is deleted",
+			}
+			defer func()  {
+
+				outJson, err := json.Marshal(output)
+
+				if err != nil {
+					log.Println("Error: !!", err)
+				}
+				_, err = fmt.Fprint(w, string(outJson))
+				log.Println("Error:", err)
+
+			}()
+		}
+}
 func getCharacterList(w http.ResponseWriter, req *http.Request) {
 
 	if req.Method == http.MethodGet {
@@ -396,6 +452,8 @@ func main(){
 	mux.HandleFunc("/user/update/",RequestLog(setHeaderMiddleWare(updateUser,  "PUT")))
 	mux.HandleFunc("/user/delete/",RequestLog(setHeaderMiddleWare(deleteUser,  "DELETE")))
 	mux.HandleFunc("/gacha/draw/", RequestLog(setHeaderMiddleWare(drawGacha,    "GET")))
+	mux.HandleFunc("/character/create/", RequestLog(setHeaderMiddleWare(createCharacter,    "PUT")))
+	mux.HandleFunc("/character/delete/", RequestLog(setHeaderMiddleWare(deleteCharacter,    "DELETE")))
 	mux.HandleFunc("/character/list/", RequestLog(setHeaderMiddleWare(getCharacterList, "GET")))
 	if err := http.ListenAndServe(":8090", mux); err != nil {
 		log.Fatal(err)
